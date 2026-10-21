@@ -1,0 +1,8 @@
+engineering-brain
+Copyright 2026 the engineering-brain contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Runtime dependencies (pinned in package.json; the full transitive license scan and SBOM are still to be run):
+  better-sqlite3 13.0.3 (MIT), picomatch 4.0.7 (MIT)
+No source code was copied from GitNexus (PolyForm Noncommercial 1.0.0) or any other restricted upstream project.

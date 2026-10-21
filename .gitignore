@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.engineering-brain/
+coverage/
+*.log
+.DS_Store

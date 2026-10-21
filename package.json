@@ -1,0 +1,21 @@
+{
+  "name": "engineering-brain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Privacy-first, local-first repository intelligence for AI coding agents (Foundation stage).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "tsc -b && vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "declaration": false,
+    "paths": {
+      "@engbrain/security": ["./packages/security/src/index.ts"],
+      "@engbrain/core": ["./packages/core/src/index.ts"],
+      "@engbrain/cli": ["./packages/cli/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+}

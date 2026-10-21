@@ -1,0 +1,20 @@
+{
+  "name": "@engbrain/core",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "engines": { "node": ">=22.13.0" },
+  "dependencies": {
+    "@engbrain/security": "0.0.0",
+    "better-sqlite3": "13.0.3",
+    "picomatch": "4.0.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/picomatch": "4.0.3"
+  }
+}
