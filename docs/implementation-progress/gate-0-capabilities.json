@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "gate": "gate-0",
+  "verdict": "PASS",
+  "generated_for_revision": "2c9c8426a7e8ded302a26413ff563f7374ca2ee5",
+  "working_tree_state": "dirty: all Phase 2A work is UNCOMMITTED on local branch phase-2a (nothing committed, pushed or published)",
+  "source_tree_fingerprint": { "algorithm": "sha256 over sorted (path, sha256(content)) of `git ls-files -co --exclude-standard`, excluding docs/implementation-progress/", "file_count": 125, "sha256": "99b3d9e53817c9d485f57dd52dfc9d2eede9d7f1b73a44862d7829a58cd3ea6b" },
+  "environment": { "os": "macOS (darwin)", "node": "v22.23.3", "node_binary_arch": "x64 (Rosetta on arm64 hardware)", "better_sqlite3": "13.0.3", "web_tree_sitter": "0.25.10", "tree_sitter_typescript": "0.23.2", "typescript": "7.0.2", "vitest": "5.0.5" },
+  "platform_coverage": { "macos": "tested", "linux": "NOT tested", "windows": "NOT tested", "node_24": "NOT tested" },
+  "capabilities": {
+    "code_intelligence_ts_js": {
+      "status": "implemented_verified",
+      "scope": "TS/TSX/JS/JSX/ESM/CommonJS symbols, ownership, exports/re-exports, imports/requires/dynamic imports, diagnostics; language-adapter interface; content-addressed facts; per-grammar extractors; incremental reindex; atomic generations; freshness; CLI queries",
+      "evidence": ["tests/acceptance/p2a-code-intelligence.test.ts", "packages/core/test/codeExtractor.test.ts", "packages/core/test/reviewFixes.test.ts", "packages/core/test/moduleResolver.test.ts", "packages/core/test/symbolCorrelation.test.ts", "docs/implementation-progress/evidence/gate-0-vitest-verbose.txt"],
+      "limits": ["verified on macOS/Node 22 only", "syntax-level facts only: no call graph, no compiler/SCIP resolution", "single-threaded parsing"]
+    },
+    "foundation_store_and_generations": {
+      "status": "implemented_verified",
+      "evidence": ["tests/acceptance/t01-t02-incremental.test.ts", "tests/acceptance/t05-t19-crash-and-concurrency.test.ts", "tests/acceptance/t20-t21-gc-and-identity.test.ts", "tests/acceptance/t22-review-regressions.test.ts"]
+    },
+    "module_relationships": {
+      "status": "implemented_verified",
+      "scope": "per-generation module_edges (resolved/external/unresolved/ambiguous/dynamic) from a deterministic resolver; tsconfig paths/baseUrl/extends, declared workspaces",
+      "evidence": ["packages/core/test/moduleResolver.test.ts", "tests/acceptance/p2a-code-intelligence.test.ts"]
+    },
+    "graph": {
+      "status": "partial",
+      "detail": "Module-level edges exist and are queryable (`engbrain imports`). There is NO language-neutral graph schema (graph_nodes / graph_edges), no node kinds beyond symbols, no traversal, path, cycle detection or impact query, no EXTENDS/IMPLEMENTS/REFERENCES edges. That is Phase 2B.",
+      "evidence": ["packages/core/src/moduleEdges.ts", "packages/core/src/queries.ts"]
+    },
+    "retrieval": {
+      "status": "partial",
+      "detail": "Persisted-data CLI queries only (`symbols`, `imports`, `status`). No context packets, no token budgeting, no MCP server. That is Phase 2C.",
+      "evidence": ["packages/cli/src/commands/symbols.ts", "packages/cli/src/commands/imports.ts"]
+    },
+    "commit_ledger": { "status": "missing", "detail": "No Git DAG ledger, no per-commit change records, no refresh command. The earlier Hive docs under docs/hive/ are plans only and are paused." },
+    "memory": { "status": "missing" },
+    "sentinel": { "status": "missing" },
+    "mcp": { "status": "missing" },
+    "sandboxed_execution": { "status": "missing", "detail": "No OS isolation is implemented; operations that run repository code are refused (packages/security/src/offline.ts)." }
+  },
+  "independent_review": {
+    "codex": "NOT available in this environment",
+    "substitute": "a separate Claude agent reviewed the working tree read-only (same model family, fresh context). This is NOT a Codex review and not a strict independent audit.",
+    "findings": "15 confirmed findings, all fixed with regression tests; see docs/code-intelligence.md"
+  }
+}

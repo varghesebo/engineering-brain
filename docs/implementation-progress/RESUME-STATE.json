@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "repository_fingerprint": "base 2c9c842 + uncommitted working tree (H4 complete)",
+  "last_complete_phase": "3A (implemented, review-limited: Codex unavailable)",
+  "next_phase": "3B",
+  "phase_state": "not_started",
+  "last_report_path": "docs/implementation-progress/3A-report.md",
+  "completed_gates": [
+    "gate-0",
+    "2A",
+    "2B",
+    "2C",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5-partial",
+    "3A-review-limited"
+  ],
+  "pending_approvals": [
+    "commit/push of any work (none authorized; all work is uncommitted on local branch phase-2a)",
+    "3B: sandboxed verification infrastructure needs your decision (only macOS sandbox-exec exists; no container/VM); 3C needs explicit execution permission; 3E needs release approval + verifier identity"
+  ],
+  "known_blockers": [
+    "Claude Code / Codex real-client handshake unverified (Codex absent; Claude Code would need network)",
+    "H5: no Windows/Linux/Node 24 runners and no Claude Code/Codex baseline available; 50k one-file change takes ~49 s (full graph rebuild)"
+  ],
+  "preexisting_dirty_files": [
+    "(none preexisting; all dirty entries are Phase 2A/2B work)"
+  ],
+  "last_verified_source_revision": "2c9c8426a7e8ded302a26413ff563f7374ca2ee5 + uncommitted working tree",
+  "last_verified_index_generation": null,
+  "environment_notes": [
+    "Node 22 is at <node22 bin dir> (system node is 20.14); if that path is gone, install Node >= 22.13",
+    "run tests: npx tsc -b && npx vitest run",
+    "Codex is not available; substitute reviews use a fresh read-only Claude agent and must be labelled as such"
+  ],
+  "instructions": "Machine-generated checkpoint only. Never mark a phase PASS without report and test evidence. Revalidate state (run the suite) before resuming."
+}
