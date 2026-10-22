@@ -60,8 +60,14 @@ export function scanForSecrets(text: string): string | null {
     if (JWT.test(run)) {
       return "jwt";
     }
-    if (run.length >= ENTROPY_CANDIDATE_MIN && shannonEntropy(run.slice(0, ENTROPY_SCAN_LIMIT)) >= ENTROPY_THRESHOLD_BITS) {
-      return "high_entropy_token";
+    // A path or URL (two or more slashes) is made of short segments: score each segment on its own, otherwise a long
+    // temp-directory path scores like a secret and takes its whole config file out of the index. Base64 secrets that
+    // contain two or more slashes in segments shorter than the minimum are a documented false negative.
+    const candidates = run.split("/").length > 2 ? run.split("/") : [run];
+    for (const candidate of candidates) {
+      if (candidate.length >= ENTROPY_CANDIDATE_MIN && shannonEntropy(candidate.slice(0, ENTROPY_SCAN_LIMIT)) >= ENTROPY_THRESHOLD_BITS) {
+        return "high_entropy_token";
+      }
     }
   }
   return null;

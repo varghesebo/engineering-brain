@@ -8,7 +8,7 @@ export interface GcResult {
 /**
  * Retention + mark-and-sweep. Keeps the newest `keep` complete generations (always including the current one),
  * removes abandoned ones, then deletes facts no retained manifest references. Caller must hold the writer lock.
- * Evidence (a later stage) will keep its own fingerprint strings, so it survives a generation being removed.
+ * Facts still referenced by the commit ledger (commit_changes) are kept: history evidence is never deleted by retention. Evidence (a later stage) will keep its own fingerprint strings, so it survives a generation being removed.
  */
 export function collectGarbage(db: Database.Database, keep: number): GcResult {
   return db.transaction((): GcResult => {
@@ -34,6 +34,8 @@ export function collectGarbage(db: Database.Database, keep: number): GcResult {
            JOIN generation_extractors ge ON ge.generation_id = gf.generation_id
            WHERE gf.content_hash = file_facts.content_hash
              AND ge.extractor_id = file_facts.extractor_id AND ge.extractor_version = file_facts.extractor_version
+         ) AND NOT EXISTS (
+           SELECT 1 FROM commit_changes cc WHERE cc.new_content_hash = file_facts.content_hash OR cc.old_content_hash = file_facts.content_hash
          )`
       )
       .run().changes;

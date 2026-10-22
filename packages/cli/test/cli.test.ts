@@ -12,7 +12,7 @@ describe("engbrain CLI surface", () => {
     const dir = tempDir();
     const help = await runCli(dir, ["--help"], home);
     expect(help.code).toBe(0);
-    expect(help.stdout).toContain("Not available in this build: context, verify, mcp, agents.");
+    expect(help.stdout).toContain("Not available in this build: verify.");
     expect((await runCli(dir, ["--version"], home)).stdout.trim()).toBe(VERSION);
     expect((await runCli(dir, [], home)).code).toBe(2);
     const unknown = await runCli(dir, ["frobnicate"], home);
@@ -21,9 +21,9 @@ describe("engbrain CLI surface", () => {
     expect((await runCli(dir, ["index", "--bogus"], home)).code).toBe(2);
   });
 
-  it("states plainly that later-stage commands are not available, whatever options follow", async () => {
+  it("states plainly that the verify command is not available, whatever options follow", async () => {
     const home = engbrainHome();
-    for (const args of [["verify"], ["verify", "--run", "suite"], ["mcp", "--root", "x"], ["context", "fix auth"], ["agents", "--json"]]) {
+    for (const args of [["verify"], ["verify", "--run", "suite"], ["verify", "--root", "x"]]) {
       const run = await runCli(tempDir(), args, home);
       expect(run.code, args.join(" ")).toBe(2);
       expect(run.stderr).toContain("not available in this build");

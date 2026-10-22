@@ -75,11 +75,18 @@ describe.skipIf(!POSIX)("T15 hostile repository git configuration is never execu
       await hardened.run(repo, ["ls-files", "-z"]);
       await hardened.run(repo, ["ls-files", "-z", "--others", "--exclude-standard"]);
       await hardened.run(repo, ["ls-files", "-z", "--", ".engineering-brain"]);
+      // history subcommands (H1): none of them may run a configured diff driver, textconv, filter, pager, hook or fsmonitor
+      const head = (await hardened.run(repo, ["rev-parse", "HEAD"])).trim();
+      await hardened.run(repo, ["ls-tree", "-r", "-z", "--full-tree", head]);
+      await hardened.runBuffer(repo, ["diff-tree", "-r", "-z", "--raw", "--no-abbrev", "--no-commit-id", "--root", head]);
+      await hardened.runBuffer(repo, ["cat-file", "--batch-check"], { input: `${head}\n` });
+      await hardened.runBuffer(repo, ["cat-file", "--batch"], { input: `${head}\n` });
+      await hardened.run(repo, ["merge-base", "--is-ancestor", head, head]);
     } finally {
       hardened.dispose();
     }
     expect(fired(markers)).toEqual([]);
-    expect(ALLOWED_GIT_SUBCOMMANDS.length).toBe(4);
+    expect(ALLOWED_GIT_SUBCOMMANDS.length).toBe(8);
   });
 
   it("the full CLI flow (init, index, status, gc, purge) on the hostile repo executes nothing and still indexes correctly", async () => {

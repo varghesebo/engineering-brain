@@ -22,7 +22,9 @@ describe("T20 retention and garbage collection", () => {
     }
     const complete = o.store.db.prepare("SELECT COUNT(*) AS n FROM generations WHERE status = 'complete'").get() as { n: number };
     expect(complete.n).toBe(3);
-    const facts = o.store.db.prepare("SELECT COUNT(*) AS n FROM file_facts").get() as { n: number };
+    const facts = o.store.db.prepare("SELECT COUNT(DISTINCT content_hash) AS n FROM file_facts").get() as { n: number };
+    const inventory = o.store.db.prepare("SELECT COUNT(*) AS n FROM file_facts WHERE extractor_id = 'inventory'").get() as { n: number };
+    expect(inventory.n).toBe(facts.n); // every distinct content has its inventory fact; code facts exist only for supported grammars
     const referenced = o.store.db
       .prepare("SELECT COUNT(DISTINCT content_hash) AS n FROM generation_files WHERE content_hash IS NOT NULL")
       .get() as { n: number };

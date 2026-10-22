@@ -8,7 +8,7 @@ import { EngbrainError } from "../errors.js";
 import { assertNoSymlinksIn, createFileExclusiveNoFollow, detectFilesystemKind } from "../fsSafe.js";
 import { isStoreTrackedByGit, type GitInfo } from "../identity.js";
 import { openDatabase } from "./db.js";
-import { applyMigrations, type MigrationResult } from "./migrations.js";
+import { applyMigrations, currentVersion, latestVersion, type MigrationResult } from "./migrations.js";
 
 export const STORE_DIR_NAME = ".engineering-brain";
 
@@ -107,7 +107,8 @@ export class Store {
     }
   }
 
-  static async open(context: StoreContext): Promise<Store> {
+  /** The on-disk checks shared by every way of opening an existing store (directory and file are real, not tracked, owned by this user). */
+  private static async verifyOnDisk(context: StoreContext): Promise<string> {
     const dir = Store.storeDir(context.root);
     const dirStat = lstatOrNull(dir);
     if (dirStat === null) {
@@ -129,6 +130,11 @@ export class Store {
     if (typeof process.getuid === "function" && dbStat.uid !== process.getuid()) {
       throw new EngbrainError("STORE_OWNER_MISMATCH", "store database is owned by a different user");
     }
+    return dir;
+  }
+
+  static async open(context: StoreContext): Promise<Store> {
+    const dir = await Store.verifyOnDisk(context);
     const db = openDatabase(Store.dbPath(context.root));
     try {
       const meta = readMetaOrFail(db); // identity checks BEFORE any write (migrations) to a file that may be foreign
@@ -147,6 +153,33 @@ export class Store {
         current = { ...meta, historyKey: context.git.historyKey };
       }
       return new Store(db, dir, current, migration, historyChanged);
+    } catch (error) {
+      db.close();
+      throw error;
+    }
+  }
+
+  /**
+   * A strictly read-only handle for readers (the MCP server): the same identity and location checks as `open`, but the database is opened
+   * read-only with `query_only`, nothing is migrated, repaired or updated, and a store that needs a migration is refused (run `engbrain index`).
+   */
+  static async openReadOnly(context: StoreContext): Promise<Store> {
+    const dir = await Store.verifyOnDisk(context);
+    const db = openDatabase(Store.dbPath(context.root), { readonly: true });
+    try {
+      db.pragma("query_only = ON");
+      const meta = readMetaOrFail(db);
+      if (meta.installId !== context.installId) {
+        throw new EngbrainError("STORE_OWNER_MISMATCH", "this store was not created by this installation; refusing to use it");
+      }
+      if (meta.rootRealpath !== context.root) {
+        throw new EngbrainError("STORE_ROOT_MISMATCH", "this store belongs to a different directory (moved or copied); refusing to use it");
+      }
+      const version = currentVersion(db);
+      if (version !== latestVersion()) {
+        throw new EngbrainError("STORE_NEEDS_MIGRATION", `store schema v${version} differs from this build's v${latestVersion()}; run \`engbrain index\` to upgrade it (readers never migrate)`);
+      }
+      return new Store(db, dir, meta, { from: version, to: version, backupPath: null });
     } catch (error) {
       db.close();
       throw error;

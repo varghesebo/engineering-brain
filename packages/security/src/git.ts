@@ -9,16 +9,21 @@ import { delimiter, isAbsolute, join } from "node:path";
  * goes through this module. Only a small read-only subcommand allowlist is permitted, and none of
  * the allowed subcommands refresh the index or run attribute filters.
  */
-export const ALLOWED_GIT_SUBCOMMANDS = ["rev-parse", "ls-files", "rev-list", "symbolic-ref"] as const;
+export const ALLOWED_GIT_SUBCOMMANDS = ["rev-parse", "ls-files", "rev-list", "symbolic-ref", "diff-tree", "cat-file", "merge-base", "ls-tree"] as const;
 export type GitSubcommand = (typeof ALLOWED_GIT_SUBCOMMANDS)[number];
 
-const FORBIDDEN_ARG = /^(-c|--config|--exec-path|--upload-pack|--receive-pack|--ext-diff|--textconv|--git-dir|--work-tree)/;
+/**
+ * Arguments that could run a program, read a path chosen by the caller, write a file or change which repository is read.
+ * `--output` writes a file; `--filters`/`--textconv`/`--ext-diff` run configured programs; `-O` reads an order file; `--open-files-in-pager` starts a pager;
+ * `-c` is also diff-tree's combined-merge flag (never wanted here); `log` is not allowlisted at all (signature display can run gpg).
+ */
+const FORBIDDEN_ARG = /^(-c|--config|--exec-path|--upload-pack|--receive-pack|--ext-diff|--textconv|--filters|--output|--open-files-in-pager|-O|--git-dir|--work-tree|--no-index)/;
 const WINDOWS_ENV_PASSTHROUGH = ["SystemRoot", "SYSTEMROOT", "TEMP", "TMP", "ComSpec"];
 
 export class GitError extends Error {
   constructor(
     message: string,
-    readonly code: "GIT_NOT_FOUND" | "GIT_DISALLOWED" | "GIT_FAILED" | "GIT_TIMEOUT",
+    readonly code: "GIT_NOT_FOUND" | "GIT_DISALLOWED" | "GIT_FAILED" | "GIT_TIMEOUT" | "GIT_OUTPUT_TOO_LARGE",
     readonly exitCode: number | null = null
   ) {
     super(message);
@@ -93,7 +98,10 @@ export class HardenedGit {
       "-c", `core.hooksPath=${join(scratch, "hooks")}`,
       "-c", "core.untrackedCache=false",
       "-c", "core.sshCommand=",
-      "-c", "protocol.allow=never"
+      "-c", "protocol.allow=never",
+      "-c", "core.commitGraph=false", // a hostile commit-graph file could misreport reachability
+      "-c", "gc.auto=0",
+      "-c", "diff.renameLimit=1000" // bounds rename-detection CPU whatever the repository configures
     ];
   }
 
@@ -109,6 +117,7 @@ export class HardenedGit {
       GIT_CONFIG_GLOBAL: join(scratch, "empty.gitconfig"),
       GIT_TERMINAL_PROMPT: "0",
       GIT_OPTIONAL_LOCKS: "0",
+      GIT_NO_LAZY_FETCH: "1", // a partial clone must never try to fetch missing objects
       GIT_PAGER: "cat",
       LC_ALL: "C"
     };
@@ -121,6 +130,15 @@ export class HardenedGit {
   }
 
   async run(cwd: string, args: readonly string[]): Promise<string> {
+    return (await this.exec(cwd, args, "utf8", {})) as string;
+  }
+
+  /** Like `run`, but returns raw bytes and can feed stdin (for `cat-file --batch`). The same allowlist, forbidden arguments and environment apply. */
+  async runBuffer(cwd: string, args: readonly string[], options: { input?: string | Buffer; maxBufferBytes?: number } = {}): Promise<Buffer> {
+    return (await this.exec(cwd, args, "buffer", options)) as Buffer;
+  }
+
+  private exec(cwd: string, args: readonly string[], encoding: "utf8" | "buffer", options: { input?: string | Buffer; maxBufferBytes?: number }): Promise<string | Buffer> {
     const subcommand = args[0];
     if (subcommand === undefined || !(ALLOWED_GIT_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
       throw new GitError(`git subcommand not allowed: ${String(subcommand)}`, "GIT_DISALLOWED");
@@ -130,25 +148,33 @@ export class HardenedGit {
       throw new GitError(`git argument not allowed: ${bad}`, "GIT_DISALLOWED");
     }
     const fullArgs = [...this.buildGlobalArgs(), ...args];
-    return new Promise<string>((resolve, reject) => {
-      execFile(
+    return new Promise<string | Buffer>((resolve, reject) => {
+      const child = execFile(
         this.gitBinary,
         fullArgs,
-        { cwd, env: this.buildEnv(), timeout: this.timeoutMs, maxBuffer: this.maxBufferBytes, windowsHide: true, encoding: "utf8", shell: false },
+        { cwd, env: this.buildEnv(), timeout: this.timeoutMs, maxBuffer: options.maxBufferBytes ?? this.maxBufferBytes, windowsHide: true, encoding, shell: false },
         (error, stdout, stderr) => {
           if (error === null) {
             resolve(stdout);
             return;
           }
           const failure = error as NodeJS.ErrnoException & { killed?: boolean; code?: number | string };
+          if (failure.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+            reject(new GitError(`git ${subcommand} output exceeded the size limit`, "GIT_OUTPUT_TOO_LARGE"));
+            return;
+          }
           if (failure.killed === true) {
             reject(new GitError(`git ${subcommand} timed out`, "GIT_TIMEOUT"));
             return;
           }
           const exitCode = typeof failure.code === "number" ? failure.code : null;
-          reject(new GitError(`git ${subcommand} failed: ${stderr.trim().slice(0, 300)}`, "GIT_FAILED", exitCode));
+          reject(new GitError(`git ${subcommand} failed: ${stderr.toString().trim().slice(0, 300)}`, "GIT_FAILED", exitCode));
         }
       );
+      if (options.input !== undefined) {
+        child.stdin?.on("error", () => undefined); // the process may exit before reading all input; its exit status is reported above
+        child.stdin?.end(options.input);
+      }
     });
   }
 

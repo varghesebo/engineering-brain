@@ -6,12 +6,21 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "engines": { "node": ">=22.13.0" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "dependencies": {
     "@engbrain/security": "0.0.0",
     "better-sqlite3": "13.0.3",
-    "picomatch": "4.0.7"
+    "picomatch": "4.0.7",
+    "tree-sitter-typescript": "0.23.2",
+    "web-tree-sitter": "0.25.10"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",

@@ -7,6 +7,7 @@ secret. These categories are **known to be missed** and are pinned by tests in
 - short passwords/tokens (under the assignment pattern's 12-character minimum)
 - secrets built by string concatenation or split across lines
 - low-entropy long tokens
+- base64-style secrets containing two or more `/` characters whose segments are each shorter than 40 characters (they are scored per segment so that file paths and URLs do not exclude whole config files)
 - secrets in formats with no recognised prefix or key name
 - secrets inside files excluded as binary or oversized (those are excluded from indexing instead)
 

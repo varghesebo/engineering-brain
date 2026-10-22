@@ -58,13 +58,15 @@ describe("T7 our own code makes no network calls (guarantee 1: static + runtime)
     expect(offenders).toEqual([]);
   });
 
-  it("child_process is used only by the hardened git module", () => {
-    const users = files.filter((f) => /["'](?:node:)?child_process["']/.test(readFileSync(f, "utf8"))).map(rel);
-    expect(users).toEqual([SPAWNER]);
+  it("child_process is used only by the hardened git module and the Sentinel execution module (sandbox self-test and fixed synthetic worker; opt-in, authorization-gated)", () => {
+    const users = files.filter((f) => /["'](?:node:)?child_process["']/.test(readFileSync(f, "utf8"))).map(rel).sort();
+    expect(users).toEqual([SPAWNER, "packages/core/src/sentinel/execution.ts"].sort());
   });
 
   it("only vetted runtime dependencies are declared (no HTTP clients, telemetry or cloud SDKs)", () => {
-    const allowed = new Set(["better-sqlite3", "picomatch", "@engbrain/core", "@engbrain/security", "@engbrain/cli"]);
+    // In-process, local-only dependencies; each is part of the trusted computing base (docs/security.md).
+    // web-tree-sitter + tree-sitter-typescript (MIT): WASM parser and its official grammar files (Phase 2A).
+    const allowed = new Set(["better-sqlite3", "picomatch", "web-tree-sitter", "tree-sitter-typescript", "@engbrain/core", "@engbrain/security", "@engbrain/cli"]);
     for (const pkg of readdirSync(join(ROOT, "packages"))) {
       const manifest = JSON.parse(readFileSync(join(ROOT, "packages", pkg, "package.json"), "utf8")) as { dependencies?: Record<string, string> };
       for (const dep of Object.keys(manifest.dependencies ?? {})) {
@@ -112,13 +114,13 @@ describe("T7 our own code makes no network calls (guarantee 1: static + runtime)
 });
 
 describe("T8 strict offline fails closed (no execution of repository-influenced code exists)", () => {
-  it("verify, mcp, context and agents are refused as unavailable", async () => {
+  it("verify (test execution) is refused as unavailable, and no command accepts a --run option", async () => {
     const home = engbrainHome();
     const repo = makeGitRepo({ "a.ts": "export const a = 1;\n" });
     for (const command of ["verify", "mcp", "context", "agents"]) {
       const result = await runCli(repo, [command, "--run"], home);
       expect(result.code).toBe(2);
-      expect(result.stderr).toContain("not available");
+      expect(result.stderr).toMatch(command === "verify" ? /not available/ : /Unknown option '--run'/);
     }
   });
 

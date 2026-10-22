@@ -56,7 +56,11 @@ export function createExclusionMatcher(extraPatterns: readonly string[] = []): E
   return {
     excludesDirectory: isExcludedDirectoryName,
     excludesPath(storePath) {
-      if (storePath.split("/").some(isExcludedDirectoryName)) {
+      // Directory names exclude by DIRECTORY component only, so a FILE that happens to be named `build` is a normal file in both the
+      // git listing and the directory walk. `.git` / `.engineering-brain` are excluded as any component (a `.git` FILE marks a worktree).
+      const parts = storePath.split("/");
+      const last = parts[parts.length - 1] ?? "";
+      if (parts.slice(0, -1).some(isExcludedDirectoryName) || FOLDED_DIRECTORIES.has(last.toLowerCase())) {
         return "excluded_directory";
       }
       if (sensitive(storePath)) {

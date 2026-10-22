@@ -1,17 +1,5 @@
 import { extname } from "node:path";
-
-export interface ExtractedFact {
-  language: string | null;
-  parseStatus: "ok" | "error" | "skipped";
-  attrs: Record<string, string | number | boolean | null>;
-}
-
-export interface Extractor {
-  id: string;
-  /** Bump when output changes; facts are keyed by (content hash, id, version) so old facts are never mixed in. */
-  version: string;
-  extract(input: { path: string; data: Buffer }): ExtractedFact;
-}
+import type { ExtractedFact, Extractor } from "./extractor.js";
 
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".ts": "typescript", ".tsx": "typescript", ".mts": "typescript", ".cts": "typescript",
@@ -19,6 +7,10 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".json": "json", ".md": "markdown", ".py": "python", ".java": "java", ".go": "go", ".rs": "rust",
   ".css": "css", ".scss": "scss", ".html": "html", ".yml": "yaml", ".yaml": "yaml", ".sql": "sql", ".sh": "shell"
 };
+
+export function languageForPath(path: string): string | null {
+  return LANGUAGE_BY_EXTENSION[extname(path).toLowerCase()] ?? null;
+}
 
 function countLines(data: Buffer): number {
   if (data.length === 0) {
@@ -41,9 +33,9 @@ function countLines(data: Buffer): number {
 export const inventoryExtractor: Extractor = {
   id: "inventory",
   version: "1",
-  extract({ path, data }) {
+  extract({ data }) {
     return {
-      language: LANGUAGE_BY_EXTENSION[extname(path).toLowerCase()] ?? null,
+      language: null, // path-derived labels are NOT stored in content-keyed facts; see languageForPath()
       parseStatus: "ok",
       attrs: { byteSize: data.length, lineCount: countLines(data) }
     };

@@ -19,9 +19,9 @@ function make(): HardenedGit {
 
 describe("HardenedGit", () => {
   it("only allows a small read-only subcommand allowlist", async () => {
-    expect(ALLOWED_GIT_SUBCOMMANDS).toEqual(["rev-parse", "ls-files", "rev-list", "symbolic-ref"]);
+    expect(ALLOWED_GIT_SUBCOMMANDS).toEqual(["rev-parse", "ls-files", "rev-list", "symbolic-ref", "diff-tree", "cat-file", "merge-base", "ls-tree"]);
     const git = make();
-    for (const sub of ["status", "diff", "config", "fetch", "log", "checkout", "hash-object"]) {
+    for (const sub of ["status", "diff", "config", "fetch", "log", "checkout", "hash-object", "show", "blame", "grep", "archive", "replace"]) {
       await expect(git.run(tmpdir(), [sub])).rejects.toMatchObject({ code: "GIT_DISALLOWED" });
     }
     await expect(git.run(tmpdir(), [])).rejects.toMatchObject({ code: "GIT_DISALLOWED" });
@@ -29,7 +29,7 @@ describe("HardenedGit", () => {
 
   it("rejects config-injection style arguments", async () => {
     const git = make();
-    for (const arg of ["-c", "-ccore.fsmonitor=x", "--config=a=b", "--exec-path=/x", "--upload-pack=x", "--git-dir=/x", "--work-tree=/x", "--textconv"]) {
+    for (const arg of ["-c", "-ccore.fsmonitor=x", "--config=a=b", "--exec-path=/x", "--upload-pack=x", "--git-dir=/x", "--work-tree=/x", "--textconv", "--filters", "--output=/tmp/x", "-Oorder", "--open-files-in-pager", "--no-index", "--ext-diff"]) {
       await expect(git.run(tmpdir(), ["rev-parse", arg])).rejects.toMatchObject({ code: "GIT_DISALLOWED" });
     }
   });

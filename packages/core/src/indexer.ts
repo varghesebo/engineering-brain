@@ -1,15 +1,18 @@
-import { lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { HardenedGit } from "@engbrain/security";
 import { type AuditLog } from "./audit.js";
 import { createExclusionMatcher, type ExclusionMatcher } from "./exclusions.js";
 import { EngbrainError } from "./errors.js";
-import { readRegularFileBounded } from "./fsSafe.js";
-import { sha256Hex } from "./hash.js";
 import type { GitInfo } from "./identity.js";
-import { inventoryExtractor, type Extractor } from "./inventory.js";
-import { collisionKey, resolveUnderRoot, toStorePath } from "./paths.js";
-import { scanForSecrets } from "./secretScan.js";
+import { createInspectContext, enumerateCandidates, inspectCandidate, type Candidate } from "./candidates.js";
+import { FactWriter } from "./factWriter.js";
+import type { Extractor } from "./extractor.js";
+import { isCodeExtractorId } from "./codeExtractor.js";
+import { DEFAULT_EXTRACTORS } from "./defaultExtractors.js";
+import { databaseSizeBytes, peakRssMiB, summarizeGeneration, type GenerationSummary } from "./indexStats.js";
+import { buildGraphEdges, type GraphBuildStats } from "./graphBuilder.js";
+import { buildFeatureGraph, type FeatureBuildStats } from "./features/featureBuilder.js";
+import { RESOLVER_VERSION } from "./moduleResolver.js";
 import { collectGarbage } from "./store/gc.js";
 import {
   computeSourceFingerprint, createBuildingGeneration, currentGenerationId, discardGeneration, extractorSetHash,
@@ -18,8 +21,6 @@ import {
 import { acquireWriterLock, type LockOptions } from "./store/lock.js";
 import type { Store } from "./store/store.js";
 
-const FACT_BATCH_SIZE = 500;
-const BINARY_SNIFF_BYTES = 8192;
 
 export interface IndexOptions {
   store: Store;
@@ -27,11 +28,25 @@ export interface IndexOptions {
   /** Required when `git.isGit`. */
   hardenedGit: HardenedGit | null;
   audit?: AuditLog;
-  extractor?: Extractor;
+  /** Defaults to the inventory + TS/JS syntax extractors. */
+  extractors?: readonly Extractor[];
   lock?: LockOptions;
   /** Test hook: called at named points so crashes/aborts can be injected. Not exposed by the CLI. */
   fault?: FaultHook;
   now?: () => Date;
+  /** Extension points for callers that must do their own work under the same writer lock (the history refresh). All optional. */
+  hooks?: IndexHooks;
+}
+
+export interface IndexHooks {
+  /** After the `building` generation exists and before facts are built. Throwing aborts the run (the generation is abandoned on the next recovery). */
+  beforeBuild?: (generationId: number) => Promise<void>;
+  /** After validation, immediately before publication. */
+  beforePublish?: (generationId: number) => Promise<void>;
+  /** INSIDE the publication transaction. */
+  inPublish?: (db: import("better-sqlite3").Database, generationId: number) => void;
+  /** Inside one transaction when nothing changed and the current generation is kept. */
+  onUnchanged?: (db: import("better-sqlite3").Database, generationId: number) => void;
 }
 
 export interface IndexStats {
@@ -40,7 +55,7 @@ export interface IndexStats {
   excluded: number;
   excludedByReason: Record<string, number>;
   missing: number;
-  /** Times the extractor actually ran (the "reprocessed" count). */
+  /** Distinct blobs for which at least one extractor actually ran (the "reprocessed" count). */
   extractorRuns: number;
   /** Included files whose facts already existed (content-addressed reuse). */
   factsReused: number;
@@ -48,6 +63,15 @@ export interface IndexStats {
   gcGenerationsRemoved: number;
   gcFactsRemoved: number;
   durationMs: number;
+  /** Code extractor activity in THIS run (blobs actually parsed; reused facts are not counted here). */
+  parser: { parsed: number; failed: number; skipped: number; symbolsExtracted: number; refsExtracted: number };
+  /** The path-dependent graph build of THIS run; null when the run kept the existing generation. */
+  graph: GraphBuildStats | null;
+  /** The feature graph build of THIS run; null when the run kept the existing generation. */
+  features: FeatureBuildStats | null;
+  /** Measured, not estimated. */
+  dbSizeBytes: number;
+  peakRssMiB: number;
 }
 
 export interface IndexResult {
@@ -57,46 +81,11 @@ export interface IndexResult {
   revision: string | null;
   sourceFingerprint: string;
   stats: IndexStats;
+  /** What the published (or retained) generation contains: files, languages, parser coverage, symbols, edges, changes. */
+  summary: GenerationSummary;
 }
 
-interface Candidate {
-  /** Normalised (NFC, forward slash) key stored in the manifest. */
-  storePath: string;
-  /** The name exactly as listed on disk; used to OPEN the file (NFC and NFD names differ on Linux). */
-  rawPath: string;
-  /** Excluded before reading (e.g. symlink found while walking). */
-  preExcluded?: string;
-}
-
-/** Verifies, once per directory, that every parent component of a path is a real directory (not a symlink). */
-class DirectoryGuard {
-  private readonly verdicts = new Map<string, "ok" | "symlink" | "missing">();
-
-  constructor(private readonly root: string) {}
-
-  check(relativeDirectory: string): "ok" | "symlink" | "missing" {
-    if (relativeDirectory === "") {
-      return "ok";
-    }
-    const known = this.verdicts.get(relativeDirectory);
-    if (known !== undefined) {
-      return known;
-    }
-    const cut = relativeDirectory.lastIndexOf("/");
-    const parent = this.check(cut === -1 ? "" : relativeDirectory.slice(0, cut));
-    let verdict: "ok" | "symlink" | "missing" = parent;
-    if (parent === "ok") {
-      try {
-        const stat = lstatSync(join(this.root, ...relativeDirectory.split("/")));
-        verdict = stat.isSymbolicLink() ? "symlink" : stat.isDirectory() ? "ok" : "missing";
-      } catch {
-        verdict = "missing";
-      }
-    }
-    this.verdicts.set(relativeDirectory, verdict);
-    return verdict;
-  }
-}
+export { DEFAULT_EXTRACTORS };
 
 /**
  * Builds and atomically publishes a new generation. Flow:
@@ -109,46 +98,57 @@ export async function indexRepository(options: IndexOptions): Promise<IndexResul
   const started = Date.now();
   const now = options.now ?? ((): Date => new Date());
   const config = store.config();
-  const extractor = options.extractor ?? inventoryExtractor;
+  const extractors = options.extractors ?? DEFAULT_EXTRACTORS;
+  const extractorRefs = extractors.map((e) => ({ id: e.id, version: e.version, extensions: e.extensions }));
   const matcher = createExclusionMatcher(config.exclude);
   const lock = await acquireWriterLock(store.dir, options.lock);
   let generationId: number | null = null;
   try {
     const recoveredAbandoned = markAbandoned(store.db);
     const parentId = currentGenerationId(store.db);
-    options.audit?.record("index_start", { parentGeneration: parentId, extractor: `${extractor.id}@${extractor.version}` });
+    options.audit?.record("index_start", { parentGeneration: parentId, extractors: extractors.map((e) => `${e.id}@${e.version}`) });
 
     generationId = createBuildingGeneration(store.db, {
       parentId,
       revision: options.git.revision,
       branchLabel: options.git.branchLabel,
-      extractors: [{ id: extractor.id, version: extractor.version }],
+      extractors: extractorRefs,
+      resolverVersion: RESOLVER_VERSION,
       now: now()
     });
+    await options.hooks?.beforeBuild?.(generationId);
     options.fault?.("pre-facts");
 
-    const candidates = await enumerateCandidates(options, matcher);
-    const outcome = buildFactsAndRows(options, candidates, matcher, config.maxFileBytes, extractor);
+    const candidates = await enumerateCandidates(options.git, options.hardenedGit, matcher);
+    const outcome = await buildFactsAndRows(options, candidates, matcher, config.maxFileBytes, extractors);
 
     options.fault?.("pre-manifest");
     insertManifest(store.db, generationId, outcome.rows);
     const fingerprint = computeSourceFingerprint(store.db, generationId);
 
-    const unchanged = isUnchanged(store, parentId, fingerprint, options.git, extractor);
+    const unchanged = isUnchanged(store, parentId, fingerprint, options.git, extractorRefs);
     if (unchanged && parentId !== null) {
       discardGeneration(store.db, generationId);
+      await options.hooks?.beforePublish?.(parentId); // the kept generation is the one being "published": per-run observations (dirty overlay) must be recomputed, not lost
+      if (options.hooks?.onUnchanged !== undefined) {
+        const hook = options.hooks.onUnchanged;
+        store.db.transaction(() => hook(store.db, parentId)).immediate();
+      }
       const gc = collectGarbage(store.db, config.generationsToKeep);
-      return finish(options, parentId, true, fingerprint, outcome, recoveredAbandoned, gc, started);
+      return finish(options, parentId, true, fingerprint, outcome, recoveredAbandoned, gc, started, null, null);
     }
 
-    const validation = validateGeneration(store.db, generationId, fingerprint);
+    const graph = buildGraphEdges(store.db, generationId, options.git.root, parentId);
+    const features = buildFeatureGraph(store.db, generationId);
+    const validation = validateGeneration(store.db, generationId, fingerprint, { deep: false });
     if (!validation.ok) {
       throw new EngbrainError("INTEGRITY_FAILED", `generation failed validation: ${validation.problems.join("; ")}`);
     }
+    await options.hooks?.beforePublish?.(generationId);
     options.fault?.("pre-publish");
-    publishGeneration(store.db, generationId, { fingerprint, now: now(), fault: options.fault });
+    publishGeneration(store.db, generationId, { fingerprint, now: now(), fault: options.fault, inTransaction: options.hooks?.inPublish === undefined ? undefined : (db) => options.hooks!.inPublish!(db, generationId!) });
     const gc = collectGarbage(store.db, config.generationsToKeep);
-    return finish(options, generationId, false, fingerprint, outcome, recoveredAbandoned, gc, started);
+    return finish(options, generationId, false, fingerprint, outcome, recoveredAbandoned, gc, started, graph, features);
   } catch (error) {
     options.audit?.record("index_failed", { code: error instanceof EngbrainError ? error.code : "ERROR" });
     throw error;
@@ -157,18 +157,19 @@ export async function indexRepository(options: IndexOptions): Promise<IndexResul
   }
 }
 
-function isUnchanged(store: Store, parentId: number | null, fingerprint: string, git: GitInfo, extractor: Extractor): boolean {
+function isUnchanged(store: Store, parentId: number | null, fingerprint: string, git: GitInfo, extractors: Array<{ id: string; version: string; extensions?: readonly string[] | undefined }>): boolean {
   if (parentId === null) {
     return false;
   }
   const parent = store.db
-    .prepare("SELECT revision, branch_label AS branch, source_fingerprint AS fp, extractor_set_hash AS ext FROM generations WHERE id = ?")
-    .get(parentId) as { revision: string | null; branch: string | null; fp: string | null; ext: string };
+    .prepare("SELECT revision, branch_label AS branch, source_fingerprint AS fp, extractor_set_hash AS ext, resolver_version AS res FROM generations WHERE id = ?")
+    .get(parentId) as { revision: string | null; branch: string | null; fp: string | null; ext: string; res: string | null };
   return (
     parent.fp === fingerprint &&
     parent.revision === git.revision &&
     parent.branch === git.branchLabel &&
-    parent.ext === extractorSetHash([{ id: extractor.id, version: extractor.version }])
+    parent.ext === extractorSetHash(extractors) &&
+    parent.res === RESOLVER_VERSION
   );
 }
 
@@ -180,7 +181,9 @@ function finish(
   outcome: BuildOutcome,
   recoveredAbandoned: number,
   gc: { generationsRemoved: number; factsRemoved: number },
-  started: number
+  started: number,
+  graph: GraphBuildStats | null,
+  features: FeatureBuildStats | null
 ): IndexResult {
   const stats: IndexStats = {
     candidates: outcome.candidates,
@@ -193,65 +196,21 @@ function finish(
     recoveredAbandoned,
     gcGenerationsRemoved: gc.generationsRemoved,
     gcFactsRemoved: gc.factsRemoved,
-    durationMs: Date.now() - started
+    durationMs: Date.now() - started,
+    parser: outcome.parser,
+    graph,
+    features,
+    dbSizeBytes: databaseSizeBytes(join(options.store.dir, "store.db")),
+    peakRssMiB: peakRssMiB()
   };
   options.audit?.record("index_end", {
     generation: generationId, unchanged, included: stats.included, excluded: stats.excluded,
     extractorRuns: stats.extractorRuns, durationMs: stats.durationMs
   });
-  return { generationId, unchanged, revision: options.git.revision, sourceFingerprint: fingerprint, stats };
-}
-
-async function enumerateCandidates(options: IndexOptions, matcher: ExclusionMatcher): Promise<Candidate[]> {
-  const seen = new Map<string, Candidate>();
-  const add = (candidate: Candidate): void => {
-    seen.set(candidate.rawPath, candidate); // keyed by the on-disk name: NFC/NFD twins stay distinct so the collision is DETECTED
+  return {
+    generationId, unchanged, revision: options.git.revision, sourceFingerprint: fingerprint, stats,
+    summary: summarizeGeneration(options.store.db, generationId)
   };
-  if (options.git.isGit) {
-    const git = options.hardenedGit;
-    if (git === null) {
-      throw new EngbrainError("GIT_UNAVAILABLE", "git is required to list files in a git repository");
-    }
-    const listings = await Promise.all([
-      git.run(options.git.root, ["ls-files", "-z"]),
-      git.run(options.git.root, ["ls-files", "-z", "--others", "--exclude-standard"])
-    ]);
-    for (const listing of listings) {
-      for (const raw of listing.split("\0")) {
-        if (raw === "") {
-          continue;
-        }
-        const normalized = toStorePath(raw);
-        add(
-          normalized.ok && !raw.includes("\uFFFD")
-            ? { storePath: normalized.path, rawPath: raw }
-            : { storePath: raw, rawPath: raw, preExcluded: normalized.ok ? "invalid_path" : normalized.reason }
-        );
-      }
-    }
-  } else {
-    walk(options.git.root, "", matcher, add);
-  }
-  const byKey = (a: Candidate, b: Candidate): number =>
-    a.storePath < b.storePath ? -1 : a.storePath > b.storePath ? 1 : a.rawPath < b.rawPath ? -1 : a.rawPath > b.rawPath ? 1 : 0;
-  return [...seen.values()].sort(byKey);
-}
-
-function walk(root: string, relative: string, matcher: ExclusionMatcher, add: (candidate: Candidate) => void): void {
-  const directory = relative === "" ? root : join(root, ...relative.split("/"));
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const rel = relative === "" ? entry.name : `${relative}/${entry.name}`;
-    if (entry.isSymbolicLink()) {
-      add({ storePath: rel, rawPath: rel, preExcluded: "symlink" });
-    } else if (entry.isDirectory()) {
-      if (!matcher.excludesDirectory(entry.name)) {
-        walk(root, rel, matcher, add);
-      }
-    } else {
-      const normalized = toStorePath(rel);
-      add(normalized.ok ? { storePath: normalized.path, rawPath: rel } : { storePath: rel, rawPath: rel, preExcluded: normalized.reason });
-    }
-  }
 }
 
 interface BuildOutcome {
@@ -263,153 +222,65 @@ interface BuildOutcome {
   missing: number;
   extractorRuns: number;
   factsReused: number;
-}
-
-interface PendingFact {
-  hash: string;
-  language: string | null;
-  parseStatus: string;
-  attrsJson: string;
+  parser: IndexStats["parser"];
 }
 
 function excludedRow(path: string, reason: string): ManifestRow {
   return { path, contentHash: null, size: null, mtimeNs: null, ctimeNs: null, inode: null, excludedReason: reason };
 }
 
-function buildFactsAndRows(
+async function buildFactsAndRows(
   options: IndexOptions,
   candidates: Candidate[],
   matcher: ExclusionMatcher,
   maxFileBytes: number,
-  extractor: Extractor
-): BuildOutcome {
-  const db = options.store.db;
-  const hasFact = db.prepare("SELECT 1 FROM file_facts WHERE content_hash = ? AND extractor_id = ? AND extractor_version = ?");
-  const insertFact = db.prepare(
-    "INSERT OR IGNORE INTO file_facts (content_hash, extractor_id, extractor_version, language, parse_status, attrs_json) VALUES (?, ?, ?, ?, ?, ?)"
-  );
+  extractors: readonly Extractor[]
+): Promise<BuildOutcome> {
   const outcome: BuildOutcome = {
-    rows: [], candidates: candidates.length, included: 0, excluded: 0, excludedByReason: {}, missing: 0, extractorRuns: 0, factsReused: 0
+    rows: [], candidates: candidates.length, included: 0, excluded: 0, excludedByReason: {}, missing: 0, extractorRuns: 0, factsReused: 0,
+    parser: { parsed: 0, failed: 0, skipped: 0, symbolsExtracted: 0, refsExtracted: 0 }
   };
-  const pending: PendingFact[] = [];
-  const queuedHashes = new Set<string>();
-  let batches = 0;
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  const keys = new Set<string>();
-  const directories = new DirectoryGuard(options.git.root);
-
+  const writer = new FactWriter(options.store.db, extractors, {
+    onBatchFlushed: (batch) => {
+      if (batch === 1) {
+        options.fault?.("mid-facts");
+      }
+    }
+  });
+  await writer.prepare();
+  const ctx = createInspectContext(options.git.root, matcher, maxFileBytes);
   const exclude = (path: string, reason: string): void => {
     outcome.rows.push(excludedRow(path, reason));
     outcome.excluded += 1;
     outcome.excludedByReason[reason] = (outcome.excludedByReason[reason] ?? 0) + 1;
   };
-  const flush = (): void => {
-    if (pending.length === 0) {
-      return;
-    }
-    db.transaction(() => {
-      for (const fact of pending) {
-        insertFact.run(fact.hash, extractor.id, extractor.version, fact.language, fact.parseStatus, fact.attrsJson);
-      }
-    }).immediate();
-    pending.length = 0;
-    batches += 1;
-    if (batches === 1) {
-      options.fault?.("mid-facts");
-    }
-  };
-
   for (const candidate of candidates) {
-    const path = candidate.storePath;
-    if (candidate.preExcluded !== undefined) {
-      exclude(path, candidate.preExcluded);
-      continue;
-    }
-    const key = collisionKey(path);
-    if (keys.has(key)) {
-      exclude(path, "path_collision");
-      continue;
-    }
-    keys.add(key);
-    const pathReason = matcher.excludesPath(path);
-    if (pathReason !== null) {
-      exclude(path, pathReason);
-      continue;
-    }
-    const absolute = resolveUnderRoot(options.git.root, candidate.rawPath);
-    if (absolute === null) {
-      exclude(path, "invalid_path");
-      continue;
-    }
-    const cut = candidate.rawPath.lastIndexOf("/");
-    const parentVerdict = directories.check(cut === -1 ? "" : candidate.rawPath.slice(0, cut));
-    if (parentVerdict !== "ok") {
-      if (parentVerdict === "symlink") {
-        exclude(path, "symlink");
+    const result = inspectCandidate(ctx, candidate);
+    if (result.kind === "missing") {
+      outcome.missing += 1;
+    } else if (result.kind === "excluded") {
+      exclude(candidate.storePath, result.reason);
+    } else {
+      outcome.rows.push(result.row);
+      outcome.included += 1;
+      if (writer.add(result.row.contentHash!, candidate.storePath, result.data)) {
+        outcome.extractorRuns += 1;
       } else {
-        outcome.missing += 1;
+        outcome.factsReused += 1;
       }
-      continue;
-    }
-    let stat;
-    try {
-      stat = lstatSync(absolute);
-    } catch {
-      outcome.missing += 1;
-      continue;
-    }
-    if (stat.isSymbolicLink()) {
-      exclude(path, "symlink");
-      continue;
-    }
-    if (!stat.isFile()) {
-      exclude(path, "not_regular"); // FIFOs, sockets, devices, directories (submodules): never opened
-      continue;
-    }
-    const read = readRegularFileBounded(absolute, maxFileBytes);
-    if (read.kind === "missing") {
-      outcome.missing += 1;
-      continue;
-    }
-    if (read.kind === "excluded") {
-      exclude(path, read.reason);
-      continue;
-    }
-    const { data } = read.file;
-    if (data.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
-      exclude(path, "binary_content");
-      continue;
-    }
-    let text: string;
-    try {
-      text = decoder.decode(data);
-    } catch {
-      exclude(path, "invalid_utf8");
-      continue;
-    }
-    const detector = scanForSecrets(text);
-    if (detector !== null) {
-      exclude(path, `secret:${detector}`);
-      continue;
-    }
-    const hash = sha256Hex(data);
-    outcome.rows.push({
-      path, contentHash: hash, size: read.file.size, mtimeNs: read.file.mtimeNs, ctimeNs: read.file.ctimeNs,
-      inode: read.file.inode, excludedReason: null
-    });
-    outcome.included += 1;
-    if (queuedHashes.has(hash) || hasFact.get(hash, extractor.id, extractor.version) !== undefined) {
-      outcome.factsReused += 1;
-      continue;
-    }
-    const fact = extractor.extract({ path, data });
-    outcome.extractorRuns += 1;
-    queuedHashes.add(hash);
-    pending.push({ hash, language: fact.language, parseStatus: fact.parseStatus, attrsJson: JSON.stringify(fact.attrs) });
-    if (pending.length >= FACT_BATCH_SIZE) {
-      flush();
     }
   }
-  flush();
+  writer.flush();
+  const parser = { parsed: 0, failed: 0, skipped: 0, symbolsExtracted: 0, refsExtracted: 0 };
+  for (const [id, tally] of writer.counts) {
+    if (isCodeExtractorId(id)) {
+      parser.parsed += tally.ok + tally.error;
+      parser.failed += tally.error;
+      parser.skipped += tally.skipped;
+      parser.symbolsExtracted += tally.symbols;
+      parser.refsExtracted += tally.refs;
+    }
+  }
+  outcome.parser = parser;
   return outcome;
 }

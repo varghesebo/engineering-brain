@@ -30,6 +30,22 @@ describe("secret scanning foundation", () => {
     expect(result).not.toContain(FAKE_SECRETS.awsKey());
   });
 
+  it("does not mistake long paths and URLs for secrets (they would take whole config files out of the index)", () => {
+    for (const text of [
+      '{"scripts":{"build":"touch /var/folders/x8/tndbq99n4tz3f473ln204p_w0000gy/T/engbrain-marker-AbC123/EXECUTED"}}',
+      "cd /Users/someone/Documents/Project/engineering-brain/packages/core/src/adapters && run",
+      '"resolved": "https://registry.npmjs.org/@types/node/-/node-22.20.5.tgz"'
+    ]) {
+      expect(scanForSecrets(text), text).toBeNull();
+    }
+  });
+
+  it("still detects a high-entropy token that is not path-shaped, including one with a single slash", () => {
+    const token = Array.from({ length: 48 }, (_, i) => "aZ3kQ9xL2mB7vR1tY5uW8cN4pD6fH0jG"[(i * 7) % 32]).join("") + "Xq9Zr2Lm";
+    expect(scanForSecrets(`value=${token}`)).toBe("high_entropy_token");
+    expect(scanForSecrets(`value=${token.slice(0, 30)}/${token.slice(30)}`)).toBe("high_entropy_token");
+  });
+
   it("leaves ordinary code and hex digests alone", () => {
     expect(scanForSecrets("export function add(a: number, b: number) { return a + b; }")).toBeNull();
     expect(scanForSecrets(`const sha = "${"a1b2c3d4".repeat(8)}";`)).toBeNull();
@@ -41,7 +57,8 @@ describe("secret scanning foundation", () => {
     ["short passwords", () => 'const password = "abc123";'],
     ["secret split across concatenation", () => `const k = "${["AK", "IA"].join("")}" + "ABCDEFGHIJKLMNOP";`],
     ["low-entropy long tokens", () => `const t = "${"abcd".repeat(12)}";`],
-    ["base64 secret broken over lines", () => `x = "dGhpcyBpcyBh\n bm90IGEgcmVhbCBzZWNyZXQ="`]
+    ["base64 secret broken over lines", () => `x = "dGhpcyBpcyBh\n bm90IGEgcmVhbCBzZWNyZXQ="`],
+    ["base64 secret with two slashes in short segments (looks like a path)", () => ["wJalrXUtnFEM", "I/K7MDENG/bPxRfiCYEXAMPLE", "KEYab12CDef"].join("")]
   ])("KNOWN GAP (not detected): %s", (_name, build) => {
     expect(scanForSecrets(build())).toBeNull();
   });
