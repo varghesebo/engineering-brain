@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "repository_fingerprint": "base 2c9c842 + uncommitted working tree (H4 complete)",
-  "last_complete_phase": "3B (non-executing portion implemented, review pending; execution disabled)",
-  "next_phase": "3C",
+  "last_complete_phase": "3E (local slice; 3C-3E all non-executing)",
+  "next_phase": "none locally: remaining work needs user approvals",
   "phase_state": "blocked_on_user",
-  "last_report_path": "docs/implementation-progress/3B-report.md",
+  "last_report_path": "docs/implementation-progress/3E-report.md",
   "completed_gates": [
     "gate-0",
     "2A",
@@ -16,11 +16,15 @@
     "H4",
     "H5-partial",
     "3A-review-limited",
-    "3B-partial"
+    "3B-partial",
+    "3C-nonexec",
+    "3D-import-only",
+    "3E-local-slice"
   ],
   "pending_approvals": [
-    "commit/push of any work (none authorized; all work is uncommitted on local branch phase-2a)",
-    "3B: sandboxed verification infrastructure needs your decision (only macOS sandbox-exec exists; no container/VM); 3C needs explicit execution permission; 3E needs release approval + verifier identity"
+    "execution of repository/agent-written code (3C/3D) plus a verified sandbox (network, CPU and memory enforcement)",
+    "3E: verifier identities (Ed25519 public keys), at least two approvers plus an exception approver, release approval, retention/purge design",
+    "push of local commits"
   ],
   "known_blockers": [
     "Claude Code / Codex real-client handshake unverified (Codex absent; Claude Code would need network)",
@@ -36,5 +40,9 @@
     "run tests: npx tsc -b && npx vitest run",
     "Codex is not available; substitute reviews use a fresh read-only Claude agent and must be labelled as such"
   ],
-  "instructions": "Machine-generated checkpoint only. Never mark a phase PASS without report and test evidence. Revalidate state (run the suite) before resuming."
+  "instructions": "Machine-generated checkpoint only. Never mark a phase PASS without report and test evidence. Revalidate state (run the suite) before resuming.",
+  "user_decisions": [
+    "2026-10-22: user accepted fresh-Claude-agent reviews as the independent review (\"claude agent is fine\"); NOT Codex. Execution of repository/agent code and the weak macOS sandbox were NOT approved."
+  ],
+  "last_suite": "52 files, 670 tests passed (evidence/s3cde-vitest-verbose.txt)"
 }

@@ -1,0 +1,680 @@
+
+ RUN  v5.0.5 /Users/<user>/Documents/Project/engineering-brain
+
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > built packages are present for child-process tests > run `npm run build` first 1ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B outcomes: a failing, timed-out, skipped or empty result is never green > maps counts to one honest outcome 2ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 hardened XML and importers > refuses DOCTYPE/ENTITY (XXE, billion laughs) and oversize structure 6ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 hardened XML and importers > counts passed, failed, skipped and flags partial input 7ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 hardened XML and importers > rejects garbage instead of storing it 1ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A symbols are extracted and persisted > JavaScript, TypeScript, JSX and TSX symbols come back from persisted SQLite storage 5690ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-1 the five-service fixture > links UI route -> API -> event -> consumer -> table with a test, and reports what it could not decide 6399ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C1 a mount prefix applies only to the router actually mounted, never to middleware or other routers in the file 7181ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C task context > retrieves the relevant files, dependency paths, tests and exact source positions for a task 8354ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A state machine > rejects illegal sequences and every state has a defined edge set 8064ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 1 10673ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B graph facts match golden expectations, with provenance > imports, barrels, re-export aliases, default re-exports, workspace and alias resolution 11401ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-1 the five-service fixture > trace follows edges both ways within bounds and carries the gaps it meets; impact names the features a file belongs to 6919ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C2 a table defined in another package is not linked 'resolved'; schema-qualified names stay distinct; ORM access is heuristic 6665ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A symbols are extracted and persisted > nested symbols keep correct ownership (parent chain) 8393ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B outcomes: a failing, timed-out, skipped or empty result is never green > a failing assertion, a timeout, a skipped and an empty suite each fail to satisfy a mandatory check 15338ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 quarantine and provenance > quarantines an unsigned artifact; it cannot verify memory; an invalid signature can never be accepted 16280ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A state machine > survives a process crash: state, revision, checkpoint and orphaned queue work are durable; the lease needs its secret token and an expired lease can be taken over 8534ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C task context > holds the token cap for the WHOLE packet, flags truncation, and is deterministic 8920ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 2 7900ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B graph facts match golden expectations, with provenance > every edge carries mechanism, resolution, extractor identity and a source line 10230ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A symbols are extracted and persisted > default exports, aliased re-exports, export-all and namespace re-exports are represented 7964ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C3 unrelated emitters are not linked; non-messaging receivers only ever give a heuristic link 8463ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A policy and authority > failed or pending mandatory checks and out-of-scope changes force BLOCKED 6602ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5 interrupted indexing never exposes partial state (in-process faults) > fault at pre-facts leaves the previous complete generation current and intact 24670ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-2 editing, branches and rebuild equality > editing a backend route updates the relationships and reports the rename 11554ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 3 6719ms
+ ✓ tests/acceptance/h1-ledger.test.ts > H1 commit ledger > H1-1 records every commit once, with correct parents, per-parent changes and renames 26708ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 quarantine and provenance > a duplicate artifact is refused; failed/skipped results are recorded and never counted as passing 11950ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B campaigns > an empty pass is NOT_RUN, never PASSED; a pass passes only when every check it requires has current passing evidence 13645ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B graph facts match golden expectations, with provenance > unknown stays unknown: dynamic imports, missing modules and missing exports are explicit; no CALLS edge is ever produced 7600ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A symbols are extracted and persisted > anonymous exports and callbacks are handled safely; duplicate names stay distinguishable 7858ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A policy and authority > the builder cannot approve or touch policy; roles cannot cross over; approvals need distinct authenticated principals 7085ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 4 7923ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C4/C5/C7 external hosts are not linked to internal routes, weak or unknown-method calls are never 'resolved', parameter segments match as ambiguous 11254ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C task context > paginates search deterministically and refuses a cursor from another query or an older generation 16781ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > a no-op refresh keeps the dirty overlay (it is recomputed, never erased) 34501ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A symbols are extracted and persisted > search is a safe substring match (LIKE metacharacters are literal) and results are bounded 7187ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A policy and authority > separation of duties: the plan approver cannot become the builder, the builder cannot verify, review checks belong to reviewers, and capabilities can be revoked 6764ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-2 editing, branches and rebuild equality > a feature graph built incrementally equals a clean rebuild of the same source state 14200ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B graph facts match golden expectations, with provenance > duplicate symbol names stay distinguishable: the name is ambiguous, the stable key is not 10739ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5 interrupted indexing never exposes partial state (in-process faults) > fault at mid-facts leaves the previous complete generation current and intact 15915ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B campaigns > evidence is invalidated when the environment changes, and says so explicitly 12422ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 5 8397ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C task context > never exposes secret-bearing files through search, context, excerpts or errors 8124ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A policy and authority > profiles may only gain checks: risk scoring adds, a policy tightening adds a mandatory check and stales older tasks 6312ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C10 an imported handler is not mistaken for a same-named class method; C11 only calls inside the component belong to its UI route 10389ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A module relationships > relative, alias, workspace, builtin and package imports are classified; barrels and requires are edges 7833ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > no symbol deltas are invented when one side of a modification is excluded 14009ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B graph facts match golden expectations, with provenance > cyclic re-exports terminate and are reported unresolved, not looped 9126ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 6 8346ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C12 flows follow a request: a shared table or consumer never merges sibling routes into one flow 7935ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A evidence integrity > rejects forged evidence: fingerprint, verifier, origin, timestamp, and edits made behind the API 8531ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > speaks the protocol, lists only read tools, and answers every tool with provenance, freshness and generation 10262ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A module relationships > dynamic imports resolve only when the target is a literal; otherwise they stay unknown 8304ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 evidence goes stale, never retroactively passed > applies while bound files are unchanged, goes stale when the test file or the environment changes 28403ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > forward and reverse results match the fixture's golden graph 9443ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A evidence integrity > the task seal catches a raw edit of the state and a truncated log; forged approval rows never count 6732ms
+ ✓ tests/acceptance/h1-ledger.test.ts > H1 lineage, gaps and reuse > repeated refresh is a no-op that matches the prior facts 32830ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > validates arguments, rejects malformed requests, and bounds message size 7793ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-1 bug at A, fix at B, regression verified at C, dependent symbol changes at D > links the chain, and the verification goes stale (warned, excluded by default) when the symbol changes 61322ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5 interrupted indexing never exposes partial state (in-process faults) > fault at pre-manifest leaves the previous complete generation current and intact 21345ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 7 12455ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A module relationships > missing targets are unresolved and colliding module families are ambiguous (never guessed) 9560ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: false behavioural claims > C13 Next.js file conventions apply only where `next` is a dependency, and route groups and parallel slots are handled 13159ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-2 editing, branches and rebuild equality > other branches are isolated: switching back restores exactly the original graph and the other branch's features are not visible 26078ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > symbol-level dependencies and references follow heritage chains 7150ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A authorization goes stale > approvals are bound to source, policy and evidence; a source change, policy change or later evidence invalidates them 10354ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > is read-only: no repository or store mutation, and the database handle cannot write 9117ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 8 7579ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A module relationships > circular imports index fine and both directions resolve 8217ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > shortest path is found when decided edges connect two nodes, and its absence is not presented as independence 6650ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-2 chronology: valid time versus recorded time, late CI results, supersession, immutability > answers 'true then, known then' correctly across a late-arriving result and a supersession 11520ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A authorization goes stale > execution authorization is state-gated, single-use, signed, expiring, and dies with the source, the policy, or any trip through BLOCKED 5093ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-4 feature identity: rename, split, merge and ambiguity > one route served by the same handler becoming two routes is a split (heuristic, never certain) 11686ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A module relationships > reverse lookup answers 'who imports this file' from persisted edges 6821ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 9 7938ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > cycle detection finds the 3-file cycle and nothing else 8075ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5 interrupted indexing never exposes partial state (in-process faults) > fault at pre-publish leaves the previous complete generation current and intact 18894ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > refuses a copied store (cross-worktree) and a store that needs a migration 11903ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B trust and binding > a quarantined, forged or wrong-revision artifact cannot back a check; code modified after the run cannot approve a changed artifact 40365ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B adapters > parses Playwright, vitest and pytest output, and never reads a flaky or interrupted run as green 2ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A exclusions, unsupported languages and diagnostics > excluded files never reach the source index (no manifest entry with content, no symbols, no edges) 7075ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: identity, branches and stability > C14 the same route in two services has two distinct, service-qualified feature ids; removing one does not re-point the other 21134ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 10 9426ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > traversals are bounded on high fan-out and cycles, and say what stopped them 7434ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A execution interface > strict mode: with no verified sandbox nothing runs, a worker needs the lease secret, and indexing/MCP-facing reads stay usable 14581ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-4 feature identity: rename, split, merge and ambiguity > two features collapsing into one whose flow contains both old entry-point handlers is a merge 12636ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > after a shallow clone is unshallowed, boundary commits get their changes and history becomes complete 41863ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A exclusions, unsupported languages and diagnostics > unsupported languages are counted as unsupported and never crash indexing 7157ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 11 9779ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B traversals: bounded, deterministic, provenance-carrying > requested budgets are clamped to hard limits 9402ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B traceability, selection and run enforcement > links requirement -> behavior -> test -> evidence and reports what is not covered 15647ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A exclusions, unsupported languages and diagnostics > a syntax error yields persisted diagnostics, keeps the rest of the repository intact, and corrupts nothing 6113ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 command line and MCP > imports quarantined by default, needs an operator to accept, selects tests and writes handoffs 43450ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5 interrupted indexing never exposes partial state (in-process faults) > fault at mid-publish leaves the previous complete generation current and intact 20412ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A execution interface > runs only the fixed synthetic programs, one authorized run each, enforces timeouts, stops on cancellation (also from another connection) and on a moving tree 13992ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-4 feature identity: rename, split, merge and ambiguity > an overlap that fits no pattern is reported ambiguous, not guessed 14477ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > answers from completed generations only while an indexer publishes concurrently 22786ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: identity, branches and stability > C15 lineage and validity never mix branches: switching to another branch and back records nothing that did not happen on main 18442ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B impact means potential structural effects, with the undecided boundary attached > a symbol's impact lists importers, subclasses and the transitive importers of those files, with the disclaimer 7510ms
+ ✓ tests/acceptance/h1-ledger.test.ts > H1 lineage, gaps and reuse > H1-2 rebase / force-push: lineage `rewrite` with the correct fork, orphans excluded, identical blobs not re-extracted 46469ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A exclusions, unsupported languages and diagnostics > an extractor that throws is contained: that file gets an error fact and the run still publishes 8966ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-2 chronology: valid time versus recorded time, late CI results, supersession, immutability > a deleted required test and an updated environment assumption invalidate; an unrecorded environment is unknown, never assumed 34951ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 12 10872ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 equivalence and interruption > H1-5 stepwise refresh over A..M equals a one-shot backfill, and the published generation equals a clean index of the same state 108153ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A execution interface > the real macOS sandbox, when it self-tests, denies writes (exit 7 from write_attempt) [sandbox probe: file-write denial verified by probe; network denial is in the profile but not probed (weak confinement; no CPU/memory limits)] 7255ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > a signature binds revision, command, environment, verifier and format (a genuine artifact cannot be re-labelled) 15750ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > reports stale freshness and, with --fail-on-stale, refuses to answer from a stale index 12101ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 13 9407ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A incremental indexing > re-indexing without changes reuses every cached fact and parses nothing 10641ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A atomicity and concurrency > a second controller cannot take or advance a held task, and a stale revision is refused 8276ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5/T19 real process killed mid-index (SIGKILL), with a concurrent reader > kill at pre-publish: reader keeps seeing the previous generation; stale lock is taken over 17309ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 1: mutate files, tsconfig and package metadata, re-index, compare with a clean index 13937ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: identity, branches and stability > C16 entity ids and validity survive unrelated line shifts 14908ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-3 claims, annotations and the line between evidence and statements > a candidate cannot become verified by repetition, by smuggling a trust field, or by a model approving itself; approval needs live evidence and goes stale when it changes 19988ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B traceability, selection and run enforcement > explains test selection (proof, unknown areas) and keeps a hidden dynamic dependency through the policy sample; the dry run runs nothing 27123ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-3 authority: model memory, unknown proof, branches, worktrees > proposed model memory is never authoritative, needs independent substantiation, and unknown proof stays unknown 17081ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C read-only MCP server (real stdio child process) > never reads through a symlink or outside the repository 9369ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 14 8964ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-3 claims, annotations and the line between evidence and statements > manual documentation never replaces live code truth: an annotated member the code lacks stays 'documented but not found' and creates nothing 7279ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 2: mutate files, tsconfig and package metadata, re-index, compare with a clean index 13846ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: identity, branches and stability > C18/C27 a file past the detection limit reports a gap; identical bytes at a .sql and a .ts path do not poison each other 15198ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A incremental indexing > modifying one file reparses only that file and updates its symbols, leaving every other fact untouched 17510ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5/T19 real process killed mid-index (SIGKILL), with a concurrent reader > kill at mid-publish: reader keeps seeing the previous generation; stale lock is taken over 16894ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 15 9297ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C CLI: context and agents > engbrain context prints a bounded packet (text and JSON) and validates its arguments 13542ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > evidence for an older revision with no file binding goes stale once code moves; the CI gate refuses it 26038ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-3 claims, annotations and the line between evidence and statements > annotation files are strictly validated and untrusted: unknown properties, bad ids, traversal selectors, symlinks, oversize and duplicates are ignored with a reason 12131ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 16 7758ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A incremental indexing > deleting a file removes its active symbols and turns its importers' edges into unresolved ones; history is retained 11616ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: claims > C19 approval cannot launder stale evidence: it is refused until the candidate is explicitly re-bound to the current evidence 13098ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 3: mutate files, tsconfig and package metadata, re-index, compare with a clean index 15754ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > ledger rows, lineage events and commits of an unpublished or killed run are invisible; killed runs are cleaned up 59100ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-5 bounds on high-fanout services and hostile source > a hub consumed by hundreds of routes stays bounded and reports truncation 6741ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T5/T19 real process killed mid-index (SIGKILL), with a concurrent reader > kill at mid-facts: reader keeps seeing the previous generation; stale lock is taken over 15266ms
+ ✓ tests/acceptance/h1-ledger.test.ts > H1 lineage, gaps and reuse > H1-3 shallow clone: partial history, boundary commits with unknown ancestors, nothing invented; a missing checkpoint is `base_missing` 46201ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 17 10217ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-5 bounds on high-fanout services and hostile source > pathological source (megabyte minified line, nested templates, thousands of route-like calls) is bounded and never crashes indexing 11265ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A incremental indexing > renaming a file reuses its facts, is counted as a rename, and relationships follow once importers are updated 15489ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C CLI: context and agents > engbrain agents shows a diff, writes only on --apply, never overwrites, and preserves other settings 24234ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 18 11805ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 4: mutate files, tsconfig and package metadata, re-index, compare with a clean index 17934ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B traceability, selection and run enforcement > running repository tests fails closed without full OS enforcement; the dry run, explain and import paths stay available 42427ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > paths git allows but a working tree does not are recorded (flagged, never read); colliding names mark the list incomplete 18397ms
+ ✓ tests/acceptance/h2-features.test.ts > H2-5 bounds on high-fanout services and hostile source > control characters and very long literals in route paths cannot break the stored graph or the CLI output 7612ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > an older-revision run with file-bound results is judged by what changed since; unrelated changes keep it applying 27122ms
+ ✓ tests/acceptance/s3a-sentinel.test.ts > S3A command line > plan (dry run) writes no source and no task; list/status/report/cancel work with an authenticated operator; check-scope needs a capability 50726ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: claims > C20 table evidence goes stale when the DDL changes (and only then), including referenced-only tables 22416ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > paging never skips results when a page is trimmed to its size cap (search_code and get_feature_context) 9946ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 19 8575ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A incremental indexing > changing a tsconfig re-resolves relationships even though no source file changed 12638ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: claims > C22 a bogus proposal cannot squat a statement: different evidence is a different claim; a retired statement can be proposed again 8082ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 5: mutate files, tsconfig and package metadata, re-index, compare with a clean index 14639ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > the CI gate matches the named test case, not any test of the file, and refuses partial runs; jest absolute paths are made relative 13155ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > a sensitive path never carries a content hash even when the same blob is resolved under another path 15444ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > the caller's max_tokens bounds the WHOLE response, and a budget too small for any result does not advance the cursor 10107ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T20 retention and garbage collection > keeps K generations, sweeps unreferenced facts, and keeps the database size bounded 14353ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-3 authority: model memory, unknown proof, branches, worktrees > a record whose branch cannot be established is unknown (excluded), and one made on another branch does not contaminate this one 59424ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B parallel and interrupted verification > two workers never take the same queued item, an interrupted worker's item is re-queued after its lease expires, and approvals cannot duplicate 17583ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: claims > C29 control characters and invisible formatting characters are refused in claim text, approver and source 6470ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T1 initial and incremental indexing are equivalent > seed 20 10823ms
+ ✓ tests/acceptance/h1-ledger.test.ts > H1 lineage, gaps and reuse > H1-4 blob reuse: an unchanged blob + extractor version is neither read nor re-extracted across commits and branches 37830ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > error responses obey the size cap (a file with thousands of same-name declarations) 8662ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > branch switching never leaks the other branch's symbols once re-indexed, and is flagged stale before 18264ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 6: mutate files, tsconfig and package metadata, re-index, compare with a clean index 12498ms
+ ✓ tests/acceptance/h2-review.test.ts > H2 review: claims > C30 an entity or file that does not exist is reported as not found, not invented 10583ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B independent-review regressions > an import backs only a test-backed check of a fitting format, only once; scope and review checks can never be import-backed 12327ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > flags incomplete runs as partial and never lets a failure hide behind passes 15068ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > commit subjects lose invisible Unicode (tag characters, zero-width, word joiner, BOM) as well as control characters 14072ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T2 unchanged files are not reprocessed > runs the extractor 0 times when nothing changed, and exactly once per changed file 13480ms
+ ✓ tests/acceptance/t01-t02-incremental.test.ts > T2 unchanged files are not reprocessed > reuses facts for identical content at different paths 4682ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > the header and the data always describe ONE generation, even if an indexer publishes during the call 11652ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 impact classification > separates direct-proven, transitive and unknown; never says an unreferenced file is safe 13388ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > dirty worktree changes (modified and untracked) are indexed at the same revision with a different fingerprint 11104ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-3 authority: model memory, unknown proof, branches, worktrees > a dirty working tree changes the answer: edits to a pointed file make the record stale, and the overlay is called out 24130ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 7: mutate files, tsconfig and package metadata, re-index, compare with a clean index 17317ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: capability tokens > a capability expires at its exp (boundary included) and its lifetime is bounded at issue 7099ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > does not read through a symlinked PARENT directory 7609ms
+ ✓ tests/acceptance/h4-evidence.test.ts > H4 independent-review regressions > strips control and bidi characters from stored names, refuses secrets in provenance, and the rows are immutable 14050ms
+ ✓ tests/acceptance/h2-features.test.ts > H2 CLI and offline > feature list/show/trace/impact/provenance/gaps/validate work, and every feature command makes zero network attempts 43475ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B independent-review regressions > traceability needs the check itself to be passing; evidence dies when its import is rejected or the declared environment moves 15891ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D mutation results > a surviving mutant fails mutation_tests, the run never claims proof or 100%, and only a non-builder approver may call a mutant equivalent 17827ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T20 retention and garbage collection > `gc --keep` trims further and is safe to repeat 30588ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > a synthetic high-risk transaction fix is ELIGIBLE only for the exact source: one byte or one environment change is STALE_EVIDENCE 6115ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > repository with no commits: initialises and indexes; revision and history key are null 3260ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: capability tokens > a flipped MAC byte, an altered payload (role escalation, other task, longer life) or a malformed token is refused 9150ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > --fail-on-stale and check_freshness are never answered from the 5 s freshness cache 10256ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > an interruption at pre-facts preserves the last valid symbols and edges 18007ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-4 rules for bugs and fixes, rejected approaches, retention, secrets > a fix needs a traceable incident or failing test AND a fixing commit that is in the ledger; rejected approaches keep reason and dates 15643ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 8: mutate files, tsconfig and package metadata, re-index, compare with a clean index 16230ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D mutation results > all mutants killed passes with the 'not proof' reason; too few mutants is incomplete; a JUnit file cannot back mutation_tests 13632ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 impact classification > derives inputs from history since a base 23673ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: the controller key > a missing, symlinked, wrong-size or substituted key file is refused, and verifyTaskChain reports it; restoring the key restores the chain 7497ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > adopts a history key once the first commit exists (no warning), and flags a later rewrite without refusing 11118ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > protocol edge cases: invalid ids are not echoed, null ids are rejected, a null-JSON cursor is an argument error 9255ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > shallow clone: flagged shallow, no history key, still works 6627ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > deleting or modifying a test, changing the policy, or adding evidence after verification makes the evidence stale and blocks eligibility 18554ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > search hits and symbols carry the extractor id AND version in their provenance 6810ms
+ ✓ tests/acceptance/h2-features.test.ts > H2 CLI and offline > propose / approve / retire through the CLI: candidates are labelled, approval is a human act with --by and --yes, a model cannot approve itself 25577ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B independent-review regressions > every selected test must be in the run, or the check is incomplete 25417ms
+ ✓ tests/acceptance/s3b-campaigns.test.ts > S3B independent-review regressions > report-level errors and totals that disagree with the listed results mark an artifact partial; a failure is never hidden behind a skip 2ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: evidence lifetime > A1 evidence older than 168 h blocks assurance; just inside the window it does not 12083ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > an interruption at mid-facts preserves the last valid symbols and edges 17474ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 advisory test selection > selects with proof classes, reports unmapped areas and the seeded dynamic dependency as uncertainty; the baseline sample finds it 13308ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-4 rules for bugs and fixes, rejected approaches, retention, secrets > observations expire and are garbage-collected unless depended on; exports withhold anything that looks like a secret; secrets are refused at write 17265ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > the lineage kind uses the branch of the last PUBLISHED refresh: an unrelated plain `index` on another branch does not turn a rewrite into a switch 46863ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D formal results > Z3 unsat is a scoped, model-only pass once its assumptions are recorded; a TLA+ counterexample fails 17091ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 9: mutate files, tsconfig and package metadata, re-index, compare with a clean index 18916ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: evidence lifetime > A4 evidence older than 8 h blocks assurance; just inside the window it does not 6531ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > detached HEAD has a revision and no branch label; rebase/amend changes the revision but reuses all facts 11870ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > a heritage name declared by an enclosing scope is not the import of the same name 11903ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > forged verifier signatures, swapped artifact digests, forged approval MACs, forged manifests and builder self-approval are rejected 14296ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: approvals > A3 needs two distinct approvers: one is not enough, the same approver twice counts once, and a correctly-signed builder approval row is ignored 6411ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D formal results > a missing solver is recorded as unsupported (not_run) and the pass is never PASSED 13070ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > arrow parameters, loop variables and catch bindings shadow an import 8228ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-5 token budget, restart, summaries, read-only access and untrusted text > queries stay within budget, carry evidence paths, return identical results after a restart, and summaries reference ids instead of notes 17650ms
+ ✓ tests/acceptance/h1-review.test.ts > H1 review regressions > git output over the size limit is classified (not an empty failure), and a commit too large to list is recorded as truncated 15100ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > an interruption at pre-manifest preserves the last valid symbols and edges 19667ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: approvals > a verification or assurance token held by the builder principal is refused by appendEvidence, recordScopeCheck and assureTask 7920ms
+ ✓ tests/acceptance/p2c-context-mcp.test.ts > P2C review regressions > agents never corrupts user config: symlinked dotfile, TOML spellings, non-object JSON 23248ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > seed 10: mutate files, tsconfig and package metadata, re-index, compare with a clean index 16765ms
+warning: unable to access '.ENGINEERING-BRAIN/.gitignore': Too many levels of symbolic links
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > export * diamonds resolve in linear time and an undecidable star branch is never reported as resolved 6948ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > refuses a store copied into another repository, moved with its directory, or created by another install 18476ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > a skipped check, an unsupported tool, or a single approver where two are required is never ELIGIBLE 16102ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: scope boundary > a file scope `src/auth` authorizes itself and its subtree only, never a sibling with the same prefix 6387ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D adversarial results > a planted auth bypass (semgrep ERROR) fails auth_boundary_tests and blocks eligibility; security_review stays reviewer-recorded 13830ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > T15 hostile repository git configuration is never executed > negative control: PLAIN git does execute repo-defined commands in this fixture (so the test is sensitive) 11895ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 1: letter-case variants and symlinks around the store directory > a committed .ENGINEERING-BRAIN dir whose files are symlinks to a victim file is refused; the victim is untouched 10640ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > impact honours its edge budget and reports truncation 7224ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: scope boundary > scope paths that are relative-escaping, absolute, empty-segment or backslashed are refused at task creation 6260ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 handoff packets > is compact, scoped, immutable and expires when scope, policy or time changes 33121ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > a different repository history at the same path is reported (historyChanged), not silently accepted and not refused 9059ms
+ ✓ tests/acceptance/h5-incremental-graph.test.ts > H5 unchanged files' edges are carried over, identical (including ids) to a clean build > reuses on a body-only edit, and falls back to a full rebuild for surface, config, add and delete changes 36715ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > an exception never removes a check or makes it pass, mandatory checks cannot be excepted, and the approver must be a granted second person 8747ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 1: letter-case variants and symlinks around the store directory > an UNTRACKED case-variant directory is refused too 4320ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > an interruption at pre-publish preserves the last valid symbols and edges 20303ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > package impact follows DEPENDS_ON between packages 8091ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: a hand-edited policy file > loosening entries (zero approvals, huge evidence age, bad check ids, wrong types) are ignored or clamped, never applied 7947ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > config changes re-resolve without any source change; deleted targets and renames update the edges 20206ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > refuses a store directory that a repository ships (tracked by git) 9759ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: a hand-edited policy file > an oversized or symlinked policy file is refused outright (reads and updates), not silently replaced by defaults 4555ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > T15 hostile repository git configuration is never executed > every allowlisted subcommand via HardenedGit leaves zero markers 15431ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 handoff packets > reports overlapping handoffs from another worktree as conflicts and never merges them 13692ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D adversarial results > a race log with seed 7 fails concurrency_tests and yields a reproduction holding the seed 16426ms
+ ✓ tests/acceptance/h5-incremental-graph.test.ts > H5 unchanged files' edges are carried over, identical (including ids) to a clean build > an edit that only changes a file's own references and heritage lines is carried over too 12790ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E proof-carrying manifest and assurance controller > every affected confirmed incident must be reviewed before eligibility 13238ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > shortestPath does not treat a name-match reference as a decided edge 8854ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: execution bounds > authorization bounds, a timeout that outlives the lease, and revokeExecution are all refused before anything runs 6542ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 1: letter-case variants and symlinks around the store directory > symlinks inside the canonical store directory are refused at init and at open 17030ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E classification-aware export and the assurance report > exports are redacted by classification; a revoked or out-of-scope grant leaks nothing and is audited 5635ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B incremental graph equals a clean rebuild > case-only renames and renames keep the graph consistent (macOS/Windows filesystems are case-insensitive) 12604ms
+ ✓ tests/acceptance/t20-t21-gc-and-identity.test.ts > T21 repository and worktree identity > init twice is refused; non-git directories work; running from a subdirectory finds the repo root 11270ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 1: letter-case variants and symlinks around the store directory > the store directory is private (0700) even when it pre-existed with looser permissions 3780ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: execution bounds > the synthetic child gets an empty environment: a parent secret does not reach it 6462ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 1: letter-case variants and symlinks around the store directory > excludes .GIT / .Engineering-Brain at any depth regardless of case 6ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > a file path containing # is still a valid symbol path 9030ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: XML limits > depth, attribute count and attribute length are refused past their limits, through parseXml and parseEvidence 3ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: XML limits > oversized text is capped (also across text, CDATA and comments) and an oversized document is refused 8ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 independent-review regressions (handoffs and selection) > only the author or an admin may close a handoff; ids and labels are validated 12563ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E classification-aware export and the assurance report > the report lists what is not certified, not formally proved, not executed and unsupported, and that the review was a Claude agent 6817ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A branches, dirty trees and interruption > an interruption at mid-publish preserves the last valid symbols and edges 21894ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 2: a symlinked PARENT directory cannot be followed > a git-listed path whose parent became a symlink to an outside directory is excluded and never read 4890ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 3: repo-supplied glob patterns cannot trigger catastrophic backtracking > rejects the exponential pattern and unsupported glob syntax 3ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 3: repo-supplied glob patterns cannot trigger catastrophic backtracking > the most expensive ACCEPTED pattern stays fast on a long adversarial path 1032ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 4: FIFOs and other non-regular files never block indexing > a FIFO in a plain directory is excluded as not_regular and index completes while holding the lock 810ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 5: stale-lock takeover is serialised > while one contender holds the takeover lock, another cannot acquire the lock 109ms
+ ✓ tests/acceptance/s3-hardening.test.ts > S3 hardening: lease renewal and release > only the current token renews; renewal rotates the token and extends the lease; release needs the token and frees the task 5755ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 5: stale-lock takeover is serialised > a live lock that replaced the stale one mid-takeover is restored, not stolen 403ms
+ ✓ tests/acceptance/s3d-results.test.ts > S3D adversarial results > a shrunk property counterexample fails property_tests and yields a reproduction with its shrink steps; it is proposed to memory as a candidate only, once 17048ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > prints help (exit 0), version, and usage errors with exit code 2 527ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: a finding's evidence must really support it > refuses superseded, skipped, non-required, missing-check, out-of-scope and line-less references; records the provider as an unverified claim 9611ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > edge lookups use the (generation, path) index, not a table scan 7356ms
+ ✓ tests/acceptance/s3e-enterprise.test.ts > S3E tables refuse raw edits > raw UPDATE and DELETE on every v12 table is refused by its trigger 6818ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > states plainly that the verify command is not available, whatever options follow 2ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 6: core.worktree redirected to a directory that has its own .git > a nested repository pointing core.worktree at its enclosing repository is refused 5041ms
+ ✓ tests/acceptance/h5-incremental-graph.test.ts > H5 unchanged files' edges are carried over, identical (including ids) to a clean build > a surface-neutral edit of a file that others import, chained over two generations, still equals a clean build (package edge counts included) 22386ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > a crash at pre-facts leaves the previous graph fully intact and invisible edges never leak 16030ms
+ ✓ tests/acceptance/h4-impact-handoff.test.ts > H4 independent-review regressions (handoffs and selection) > states truncation instead of dropping files silently 11791ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 1: mutate, index incrementally, compare to a clean index of the same tree 11340ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > scans the expected source set 1ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > no source file imports a network-capable Node module (except the test guard) 45ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > no ambient network APIs (fetch, XMLHttpRequest, WebSocket, sendBeacon) are referenced 6ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > child_process is used only by the hardened git module and the Sentinel execution module (sandbox self-test and fixed synthetic worker; opt-in, authorization-gated) 4ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > only vetted runtime dependencies are declared (no HTTP clients, telemetry or cloud SDKs) 1ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > pins runtime dependency versions exactly 1ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 6: core.worktree redirected to a directory that has its own .git > legitimate linked worktrees (a .git FILE pointing at the git dir) still work 4074ms
+ ✓ tests/acceptance/t03-t04-snapshots.test.ts > T3 branch and worktree isolation (foundation part; freshness-on-switch is the next stage) > keeps linked worktrees in separate stores with separate identities and manifests 8742ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: a finding's evidence must really support it > (d) a blocking finding withdraws approvals from an ELIGIBLE task 7929ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C authorized worktrees: unauthorized, protected and concurrent changes > a synthetic auth feature inside the approved worktree is clean; a stray file outside the scope is caught and fails the scope check 6304ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review finding 8 (Windows reasoning, verified here only at the pure-function level) > rejects ':' components, drive-relative and stream-like names, and trailing dot or space 1ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > commands fail with NOT_INITIALIZED before init, with exit code 1 and a clear message 10391ms
+ ✓ tests/acceptance/p2b-review.test.ts > P2B review regressions > edge kinds that are not served are rejected explicitly and the graph validates as complete 9748ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review minor: identity is checked before the foreign database is written > a store from another installation is refused and its file is byte-identical afterwards 5488ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > T15 hostile repository git configuration is never executed > the full CLI flow (init, index, status, gc, purge) on the hostile repo executes nothing and still indexes correctly 32623ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: `fixed` needs real proof > a protected-files finding is fixed only once the worktree no longer shows protected changes 7448ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-5 token budget, restart, summaries, read-only access and untrusted text > README text and commit messages cannot approve, add operators or change policy; memory writes need an authenticated operator; MCP offers no write 62989ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C authorized worktrees: unauthorized, protected and concurrent changes > editing an existing test or the policy file to hide a failure is flagged, opens a blocking finding only a person can close, and checks cannot be dropped 7509ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > T15 hostile core.worktree cannot redirect what gets indexed > a work tree redirected to the parent directory is refused; nothing is created outside the repo 4088ms
+ ✓ tests/acceptance/t22-review-regressions.test.ts > review minor: identity is checked before the foreign database is written > a non-database file in place of the store gives a clean integrity error, not a stack trace 4655ms
+ ✓ tests/acceptance/s3d-registry.test.ts > S3D adapter registry: unsupported techniques stay visible, isolation and egress are enforced > reports unregistered and unsupported techniques and refuses unverified isolation or network access 7566ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 2: mutate, index incrementally, compare to a clean index of the same tree 12042ms
+ ✓ tests/acceptance/t03-t04-snapshots.test.ts > T3 branch and worktree isolation (foundation part; freshness-on-switch is the next stage) > switching branches in place then re-indexing never mixes branch-only files 11677ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > T15 hostile core.worktree cannot redirect what gets indexed > a work tree redirected to an unrelated directory never indexes that directory 2801ms
+ ✓ tests/acceptance/t15-hostile-git.test.ts > non-git directories: refuses to index a home or filesystem root > refuses the user's home directory when it is not a git work tree 336ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: `fixed` needs real proof > a check finding is not fixed by a pass that a later failure superseded, nor by a pass on another source 8076ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C authorized worktrees: unauthorized, protected and concurrent changes > a change by another actor pauses the task as BLOCKED and nothing is overwritten 7645ms
+ ✓ tests/acceptance/s3d-registry.test.ts > S3D targets and hypotheses: only allowlisted local targets > refuses external targets, requires an allowlisted target and enforces legal status moves 6228ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > excludes oversize, binary, invalid UTF-8, reserved names and symlinks; never reads outside the root 6068ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > non-git directories: symlinks (file and directory) are excluded and not followed 403ms
+ ✓ tests/acceptance/t13-deletion.test.ts > T13 deletion leaves the source repository intact > default uninstall keeps knowledge; --purge needs --yes; purge removes only the store 20534ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > a crash at mid-facts leaves the previous graph fully intact and invisible edges never leak 22205ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > every CLI command completes with the in-process network guard installed and zero attempts 24002ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > handles unusual but legal names exactly, stores NFC paths, and survives deep nesting 5317ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C findings: fabricated evidence is refused, genuine findings drive a bounded repair > rejects invented evidence; a genuine finding blocks, drives repair and reverification, and is closed only by new passing machine evidence 6310ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T7 our own code makes no network calls (guarantee 1: static + runtime) > negative control: the guard really would catch a network attempt 1ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T8 strict offline fails closed (no execution of repository-influenced code exists) > verify (test execution) is refused as unavailable, and no command accepts a --run option 1202ms
+ ✓ tests/acceptance/s3d-registry.test.ts > S3D invariants: approved once, never edited, candidate tests are read-only > only an independent approver approves; the stored invariant is immutable; candidates leave it unchanged 6422ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 3: mutate, index incrementally, compare to a clean index of the same tree 12148ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > --json output is valid JSON for every command and carries no extra prose on stdout 21518ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: the repair loop is started by a person and really bounded > startRepair needs an approve operator who did not build, a live task, and a capped budget 7986ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C providers: nothing is faked > reports what is installed, never launches anything, and does not mistake labels for independence 2ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > detects case-only path collisions deterministically where the filesystem can hold both 2681ms
+ ✓ tests/acceptance/t03-t04-snapshots.test.ts > T4 dirty working tree is represented > clean, modified, untracked and deleted trees all yield distinct source fingerprints at the same revision 16603ms
+ ✓ tests/acceptance/t13-deletion.test.ts > T13 deletion leaves the source repository intact > init tolerates a leftover config file and purge refuses a store directory that git tracks 9578ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C bounded repair, cancellation and resumable handoffs > exhausting any bound blocks the task; a repeated failure escalates; replaying an iteration is not charged twice 6356ms
+ ✓ tests/acceptance/t07-t08-offline.test.ts > T8 strict offline fails closed (no execution of repository-influenced code exists) > status reports OS isolation honestly as unavailable 6518ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: the repair loop is started by a person and really bounded > recordIteration needs an authorized party and a started loop, honours the backoff, and measures time itself 6301ms
+ ✓ tests/acceptance/t12-secrets.test.ts > T12 secrets never reach the index, audit log, config or CLI output > excludes secret-bearing files and stores no secret text anywhere in the store 17317ms
+ ✓ tests/acceptance/s3d-registry.test.ts > S3D quotas: fail closed, never overrun, never raised > refuses consumption without a quota, refuses overruns, and the store refuses a raised maximum 8134ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > --root selects the repository directory 7609ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > extracts module, function, class, constructor, method, interface, type, enum, variable, namespace 67ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T19 concurrency > two writers racing: exactly one builds at a time, both succeed, no corruption (25 rounds) 196294ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C bounded repair, cancellation and resumable handoffs > cancellation stops future work; a blocked task leaves a useful handoff; resuming revalidates source and policy 6166ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > retains correct ownership for nested functions, methods and namespaces 12ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > records parameters: optional, rest, defaults, destructuring, single-param arrows 12ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > anonymous functions in call arguments are not declarations and do not crash 1ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > duplicate names stay distinguishable by deterministic symbol keys 2ms
+ ✓ packages/core/test/codeExtractor.test.ts > declarations, ownership and kinds > signature fingerprints ignore the name and whitespace but notice signature changes 11ms
+ ✓ packages/core/test/codeExtractor.test.ts > exports and re-exports > represents named, default, aliased, re-exports, export-all and namespace re-exports 1ms
+ ✓ packages/core/test/codeExtractor.test.ts > exports and re-exports > anonymous default exports of functions, classes and arrows are real symbols named `default` 1ms
+ ✓ packages/core/test/codeExtractor.test.ts > exports and re-exports > CommonJS exports are recorded as commonjs exports 4ms
+ ✓ packages/core/test/codeExtractor.test.ts > imports, requires and unknown targets > records import bindings, side-effect imports, export-from, require and dynamic imports; unknown targets are NULL 8ms
+ ✓ packages/core/test/codeExtractor.test.ts > imports, requires and unknown targets > finds require/dynamic import inside function bodies and expressions 4ms
+ ✓ packages/core/test/codeExtractor.test.ts > JSX, TSX, JavaScript flavours > parses JSX/TSX components 9ms
+ ✓ packages/core/test/codeExtractor.test.ts > JSX, TSX, JavaScript flavours > parses ESM and CommonJS JavaScript 1ms
+ ✓ packages/core/test/codeExtractor.test.ts > locations > records 1-based lines, columns and UTF-8 byte ranges (including multi-byte text) 1ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > syntax errors give diagnostics without echoing source, partial facts, and no crash 5ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > unsupported languages get NO extractor and therefore no fact (nothing cached that a supported path could inherit) 0ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > unsupported languages are skipped, not failed 0ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > contains adapter exceptions as error facts 0ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > hostile shapes finish quickly: deep nesting, huge lines, noise, many declarations and imports 3759ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > indexes thousands of files in bounded time with bounded memory growth 10225ms
+ ✓ packages/core/test/codeExtractor.test.ts > errors, diagnostics and hostile input > caps symbols and says so 77ms
+ ✓ packages/core/test/codeExtractor.test.ts > determinism and adapter versioning > same bytes give identical facts 3ms
+ ✓ packages/core/test/codeExtractor.test.ts > determinism and adapter versioning > extractor version derives from adapter versions so upgrades never mix facts 1ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 4: mutate, index incrementally, compare to a clean index of the same tree 12073ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: ambient declarations (.d.ts) are not dropped > export declare class/const/function/namespace/enum produce exported symbols and exports 69ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: the repair loop is started by a person and really bounded > varying the failure signature cannot evade the bound 5811ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: exports inside namespaces are not module-level exports > namespace members are scoped, and exported only relative to an exported owner 4ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: import = require and export = > `import x = require()` is a literal require, `export =` is a commonjs export 2ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: no literal values leak into facts > destructured parameter names omit defaults and literals 21ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: assorted extraction gaps > inline type-literal members in signatures are not method symbols (interface members still are) 3ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: assorted extraction gaps > destructured exports and `export default <identifier>` are linked 2ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: assorted extraction gaps > when the symbol limit is hit, export facts never point at the wrong symbol 230ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: assorted extraction gaps > JavaScript files may contain JSX (they use the tsx grammar) 7ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: assorted extraction gaps > positions: columns are UTF-16 units, byte offsets UTF-8, after multi-byte text on the same line 2ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: path-independent facts (the grammar is part of the extractor identity) > each extension maps to exactly one extractor, and unsupported paths map to none 3ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > a workspace package can never shadow a Node builtin 2ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > duplicate workspace package names are ambiguous, never silently the first 0ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > a catch-all `*` paths mapping with no target falls through to normal resolution (react stays external) 0ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > a specific paths mapping whose target is missing is still reported (it names something the repo claims to provide) 0ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > an extensionless specifier never resolves to a .json file (an explicit one does) 1ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver > resolution stays fast with thousands of bare imports against thousands of packages 27ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver configuration is verified against the manifest and capped > a config file whose bytes differ from the manifest hash aborts instead of mixing snapshots 3ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver configuration is verified against the manifest and capped > path patterns are capped so a hostile tsconfig cannot make resolution slow 13ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: resolver configuration is verified against the manifest and capped > only packages declared as workspaces count: package.json `workspaces` globs, pnpm-workspace.yaml, negations 19ms
+ ✓ packages/core/test/reviewFixes.test.ts > review fix: directory-name exclusions apply to directories, consistently > a FILE named like an excluded directory is a normal file; `.git` stays excluded at any position 8ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > only allows a small read-only subcommand allowlist 6ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > rejects config-injection style arguments 2ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > does not use Unix-only /dev/null for hooks or config (Windows-safe) 3ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > builds a minimal environment: no inherited secrets or git variables 2ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > removes its scratch directory on dispose 3ms
+ ✓ tests/acceptance/t12-secrets.test.ts > T12 secrets never reach the index, audit log, config or CLI output > a file that becomes secret-bearing is excluded on the next index and its facts are swept 5777ms
+ ✓ packages/security/test/git.test.ts > HardenedGit > reports a clear error when not in a repository 502ms
+ ✓ packages/security/test/git.test.ts > resolveGitBinary > ignores relative and empty PATH entries (a repo cannot plant git in the working directory) 0ms
+ ✓ packages/security/test/git.test.ts > resolveGitBinary > finds git via an absolute PATH entry 0ms
+ ✓ packages/core/test/featureDetectors.test.ts > normalizePath > collapses parameter spellings and drops query, fragment and trailing slash 3ms
+ ✓ packages/core/test/featureDetectors.test.ts > lexer > ignores comments, strings and regex literals that look like code, and survives an apostrophe in JSX text 4ms
+ ✓ packages/core/test/featureDetectors.test.ts > lexer > reports template literals with substitutions as dynamic and bounds the token count 79ms
+ ✓ packages/core/test/featureDetectors.test.ts > HTTP routes and clients > detects server routes with inline, referenced and middleware handlers; dynamic paths are explicitly unknown 6ms
+ ✓ packages/core/test/featureDetectors.test.ts > HTTP routes and clients > detects NestJS decorator routes with the controller prefix 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > HTTP routes and clients > detects client calls (fetch with a method, axios, dynamic urls) and does not call a single-argument getter on a server a route 4ms
+ ✓ packages/core/test/featureDetectors.test.ts > events, jobs, UI routes, SQL, tests and OpenAPI > detects producers and consumers with literal names, queue workers, and dynamic names as unknown 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > events, jobs, UI routes, SQL, tests and OpenAPI > detects scheduled jobs, JSX and object UI routes 2ms
+ ✓ packages/core/test/featureDetectors.test.ts > events, jobs, UI routes, SQL, tests and OpenAPI > extracts tables and access from SQL text, DDL and code strings, and prisma model access 9ms
+ ✓ packages/core/test/featureDetectors.test.ts > events, jobs, UI routes, SQL, tests and OpenAPI > detects test cases and OpenAPI JSON operations 2ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > fetch: the method is known only when the options say so; anything else is an UNKNOWN method, never a guessed GET 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > NestJS: a non-literal controller prefix is unknown, the prefix does not leak to the next class, and the handler skips other decorators 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > templates with an unknown leading part are dynamic, not a known path 0ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > receivers: only server-shaped receivers are routes; loggers, parsers, users and API clients with callbacks are not 0ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > SQL: prose that merely contains SQL words is not SQL 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > lines stay correct after backslash-newline continuations and escaped template newlines; JSX closing tags do not hide later code 0ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > URLs are stored without query string or credentials; external hosts are flagged 1ms
+ ✓ packages/core/test/featureDetectors.test.ts > review regressions: detectors > scans are linear: a large SQL file and unclosed calls stay fast, and limits are reported as coverage notes 450ms
+ ✓ packages/core/test/lock.test.ts > writer lock > is exclusive and releasable 161ms
+ ✓ packages/core/test/lock.test.ts > writer lock > takes over a lock whose same-host owner process is dead 3ms
+ ✓ packages/core/test/lock.test.ts > writer lock > does not take over a lock held by a live same-host process 155ms
+ ✓ packages/core/test/lock.test.ts > writer lock > expires foreign-host locks only by age 157ms
+ ✓ packages/core/test/lock.test.ts > writer lock > release only removes the lock it owns 1ms
+ ✓ packages/core/test/lock.test.ts > writer lock > single-threaded sanity: many contenders on a stale lock never overlap (true interleaving is covered by the takeover-hook tests in T22) 98ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: heritage > records extends/implements targets as written (identifier, dotted, generic), NULL for expressions 51ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: heritage > heritage targets are not also counted as body references 7ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: references to import-bound names > records uses inside the owning symbol, deduplicated per symbol, with module-level uses owned by the module 15ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: references to import-bound names > does not count binding sites, property names, or unrelated identifiers 14ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: references to import-bound names > CommonJS require bindings are import bindings and keep their names on the ref 12ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: references to import-bound names > JSX component usage and type-position usage count as references 4ms
+ ✓ packages/core/test/graphFacts.test.ts > graph facts: references to import-bound names > caps references per symbol and says so 18ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > stryker refuses invalid JSON 2ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > fastcheck refuses invalid JSON 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > hypothesis refuses invalid JSON 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > semgrep_json refuses invalid JSON 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > tla refuses invalid JSON 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > z3 refuses invalid JSON 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > race_log refuses invalid JSON 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > stryker refuses a non-object root 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > fastcheck refuses a non-object root 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > hypothesis refuses a non-object root 2ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > semgrep_json refuses a non-object root 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > tla refuses a non-object root 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > z3 refuses a non-object root 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > race_log refuses a non-object root 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > stryker refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > fastcheck refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > hypothesis refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > semgrep_json refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > tla refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > z3 refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > race_log refuses a wrong shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > refuses an oversized artifact before parsing it 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > refuses a non-assurance format 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > parseAssurance: common input handling > is reached through parseEvidence 5ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > parses a report with one survivor 4ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > parses an all-killed report 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > maps every Stryker status 4ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > records an unknown status as inconclusive with a warning 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > skips unsafe paths and malformed entries as partial 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > marks an empty report partial 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > refuses a report whose files is not an object 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > stryker > cleans and redacts hostile strings 3ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > parses a shrunk counterexample 2ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > derives shrink steps from the shrink path 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > records a passing property 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > is partial when the seed, run count or counterexample is missing 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > refuses a non-boolean failed 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > bounds a huge or deep counterexample 47ms
+ ✓ packages/core/test/assuranceParsers.test.ts > fastcheck > redacts a secret-looking counterexample 3ms
+ ✓ packages/core/test/assuranceParsers.test.ts > hypothesis > parses the documented wrapper 2ms
+ ✓ packages/core/test/assuranceParsers.test.ts > hypothesis > is partial without a test name, seed or example 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > hypothesis > refuses raw pytest text 2ms
+ ✓ packages/core/test/assuranceParsers.test.ts > semgrep_json > parses the planted auth bypass 6ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > validates --keep and refuses to run against an unreadable configuration 7180ms
+ ✓ packages/core/test/migrations.test.ts > migrations > creates the v1 schema on an empty database without a backup 32ms
+ ✓ packages/core/test/migrations.test.ts > migrations > is idempotent 18ms
+ ✓ packages/core/test/migrations.test.ts > migrations > backs up an existing store before upgrading and applies only newer migrations 32ms
+ ✓ packages/core/test/migrations.test.ts > migrations > rolls a failing migration back atomically 26ms
+ ✓ packages/core/test/assuranceParsers.test.ts > semgrep_json > maps severities and flags unknown ones 3ms
+ ✓ packages/core/test/assuranceParsers.test.ts > semgrep_json > is partial when the scan reported errors 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > semgrep_json > treats an empty clean scan as complete 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > semgrep_json > drops unsafe paths and cleans hostile text 7ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > parses a TLA+ counterexample with its trace 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > records z3 unsat of the negated invariant as a scoped success only 1ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > maps z3 sat to a counterexample and needs a trace 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > maps unknown and error results to no conclusion 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > refuses sat/unsat for TLA+ and unknown result words 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > is partial when provenance is missing or the digest is malformed 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > tla and z3 > sanitizes a hostile trace without touching prototypes 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > race_log > parses the lost-update schedule 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > race_log > records a clean schedule as passed 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > race_log > refuses a wrong schedule or violation shape 0ms
+ ✓ packages/core/test/assuranceParsers.test.ts > race_log > caps an oversized schedule as partial 7ms
+ ✓ packages/core/test/assuranceParsers.test.ts > race_log > is partial without a seed or tool, and cleans hostile steps 1ms
+ ✓ packages/core/test/migrations.test.ts > migrations > refuses a store written by a newer engbrain (no downgrade) 22ms
+ ✓ packages/core/test/migrations.test.ts > Phase 2A migrations preserve existing data (v1 store upgraded to the current schema) > keeps generations, manifests and facts, adds the code-fact and edge tables, and backs up first 24ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > identical content is the only non-inferred match, even when the file moved 2ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > a changed file keeps its symbol by path+name, but the match is INFERRED 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > a symbol moved to another file is a medium-confidence inference only when unique 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > a rename with an identical signature is a LOW-confidence inference, never asserted as exact 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > ambiguous cases produce no match: two removed and two added with the same signature 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > the same name in two other files is ambiguous, not guessed 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > unmatched symbols are reported as added or removed, nothing is invented 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > cross-version symbol correlation > is deterministic regardless of input order 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > correlation consistency (review fixes) > a symbol is never both matched and ambiguous 1ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > correlation consistency (review fixes) > identical bytes copied to two NEW paths is ambiguous, not a certain match to the first path 2ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > correlation consistency (review fixes) > a file that stays put keeps its certain match even when an identical copy appears elsewhere 0ms
+ ✓ packages/core/test/symbolCorrelation.test.ts > correlation consistency (review fixes) > scales: 20,000 symbols correlate in well under a second 115ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > uses safe pragmas 27ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > cannot point current_generation at a building generation 18ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > cannot write a manifest into a complete generation, nor edit manifest rows 14ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > manifest rows must be either hashed or excluded, never both/neither 13ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > publish is all-or-nothing: a failure after completing rolls the status back 13ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > validation catches manifest entries without facts and a tampered manifest 16ms
+ ✓ packages/core/test/invariants.test.ts > database-enforced snapshot invariants > marks only building generations abandoned 13ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects aws_access_key_id 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects github_token 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects private_key_block 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects slack_token 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects credential_assignment 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects url_credentials 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects a high-entropy token 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > detects a JWT-shaped token 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > does not return or expose the matched text 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > does not mistake long paths and URLs for secrets (they would take whole config files out of the index) 2ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > still detects a high-entropy token that is not path-shaped, including one with a single slash 1ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > leaves ordinary code and hex digests alone 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > KNOWN GAP (not detected): short passwords 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > KNOWN GAP (not detected): secret split across concatenation 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > KNOWN GAP (not detected): low-entropy long tokens 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > KNOWN GAP (not detected): base64 secret broken over lines 0ms
+ ✓ packages/core/test/secretScan.test.ts > secret scanning foundation > KNOWN GAP (not detected): base64 secret with two slashes in short segments (looks like a path) 0ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > dot-separated flood scans in bounded time 48ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > jwt-prefix run then .eyJ scans in bounded time 9ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > keyword flood scans in bounded time 7ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > unterminated assignment scans in bounded time 9ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > scheme-and-colon flood scans in bounded time 12ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > one huge token-shaped run scans in bounded time 7ms
+ ✓ packages/core/test/secretScan.test.ts > hostile input cannot stall the scanner (regression: unbounded scheme prefix took minutes on 1 MiB) > many github-prefixed runs scans in bounded time 10ms
+ ✓ packages/core/test/moduleResolver.test.ts > relative resolution > resolves extensionless specifiers, directory indexes and parent paths 3ms
+ ✓ packages/core/test/moduleResolver.test.ts > relative resolution > maps ESM-style .js specifiers to TypeScript sources, preferring the source 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > relative resolution > is ambiguous only when different module families collide, never guessed 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > relative resolution > reports missing targets and repository escapes as unresolved with a reason 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > dynamic, external and unsupported specifiers > a non-literal target is dynamic: explicitly unknown, never resolved 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > dynamic, external and unsupported specifiers > packages and Node builtins are external, with the package name 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > dynamic, external and unsupported specifiers > urls, absolute paths, package imports and empty specifiers are unresolved, not guessed 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > tsconfig paths and baseUrl > applies paths with a wildcard, an exact pattern, and reports a missing target 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > tsconfig paths and baseUrl > uses the most specific pattern 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > tsconfig paths and baseUrl > applies the NEAREST tsconfig by directory 2ms
+ ✓ packages/core/test/moduleResolver.test.ts > tsconfig paths and baseUrl > baseUrl resolves non-relative specifiers before treating them as packages 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > tsconfig paths and baseUrl > a paths target that escapes the repository can never resolve 2ms
+ ✓ packages/core/test/moduleResolver.test.ts > workspace packages > resolves a package entry, a deep import, and a package without main via index 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > workspace packages > a workspace package whose entry is missing is unresolved, not external 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > parseJsonc > accepts comments and trailing commas, preserves strings that look like comments 4ms
+ ✓ packages/core/test/moduleResolver.test.ts > parseJsonc > returns null for garbage and never throws 1ms
+ ✓ packages/core/test/moduleResolver.test.ts > parseJsonc > handles hostile input in bounded time 24ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T19 concurrency > a writer times out cleanly while another holds the lock, leaving the store untouched 6294ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > a crash at pre-manifest leaves the previous graph fully intact and invisible edges never leak 19731ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes .env as sensitive_path 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes config/.env.production as sensitive_path 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes keys/server.pem as sensitive_path 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes home/.ssh/id_rsa as sensitive_path 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes a/b/credentials.json as sensitive_path 2ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes infra/terraform.tfstate as sensitive_path 2ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes .NPMRC as sensitive_path 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes node_modules/x/index.js as excluded_directory 0ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes .git/config as excluded_directory 0ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes .engineering-brain/store.db as excluded_directory 2ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes dist/app.js as excluded_directory 0ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes package-lock.json as generated 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes x/app.min.js as generated 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes debug.log as log 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes img/logo.PNG as binary_extension 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > excludes lib/native.dll as binary_extension 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > keeps ordinary source 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > custom patterns are additive and cannot re-include defaults 1ms
+ ✓ packages/core/test/exclusions.test.ts > default exclusions (deny by default) > prunes known directories when walking 0ms
+ ✓ packages/core/test/audit.test.ts > audit log > writes content-free JSON lines and refuses content-bearing fields 6ms
+ ✓ packages/core/test/audit.test.ts > audit log > hashes paths with the install salt (stable, not reversible by inspection) 1ms
+ ✓ packages/core/test/audit.test.ts > audit log > truncates long strings 1ms
+ ✓ packages/core/test/audit.test.ts > audit log > rotates by size and keeps at most maxFiles 10ms
+ ✓ packages/core/test/audit.test.ts > audit log > creates the file with mode 0600 1ms
+ ✓ packages/core/test/audit.test.ts > audit log > prunes logs older than the retention window 2ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > returns defaults when no file exists 2ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > accepts additive excludes and bounded caps 2ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > rejects unknown keys (no hidden knobs, e.g. no command or network settings) 1ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > rejects out-of-range values instead of clamping silently 0ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > rejects exclude patterns that are absolute, drive-qualified or traverse 2ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > rejects malformed JSON and non-objects 2ms
+ ✓ packages/core/test/config.test.ts > config is untrusted input > ignores config files above the size cap by treating them as unreadable defaults-free failure 2ms
+ ✓ packages/core/test/fsSafe.test.ts > readRegularFileBounded > reads regular files and reports ns timestamps/inode as strings 2ms
+ ✓ packages/core/test/fsSafe.test.ts > readRegularFileBounded > reports missing files 1ms
+ ✓ packages/core/test/fsSafe.test.ts > readRegularFileBounded > refuses files over the cap without reading them 1ms
+ ✓ packages/core/test/fsSafe.test.ts > readRegularFileBounded > refuses directories 1ms
+ ✓ packages/core/test/fsSafe.test.ts > readRegularFileBounded > does not follow a final symlink (O_NOFOLLOW) 1ms
+ ✓ packages/core/test/fsSafe.test.ts > filesystem kind detection (best effort) > uses the longest matching mount point 1ms
+ ✓ packages/core/test/fsSafe.test.ts > filesystem kind detection (best effort) > returns unknown when nothing matches or input is empty 0ms
+ ✓ packages/core/test/fsSafe.test.ts > filesystem kind detection (best effort) > flags UNC paths on Windows and does not guess elsewhere 0ms
+ ✓ packages/core/test/paths.test.ts > toStorePath > normalises to NFC and keeps case 2ms
+ ✓ packages/core/test/paths.test.ts > toStorePath > rejects traversal, absolute, drive, NUL and empty components 2ms
+ ✓ packages/core/test/paths.test.ts > toStorePath > flags Windows reserved names on every platform for portability 2ms
+ ✓ packages/core/test/paths.test.ts > collisionKey > collides on case and unicode normalisation differences 0ms
+ ✓ packages/core/test/paths.test.ts > isInside / absoluteFromStorePath > detects escapes lexically 1ms
+ ✓ packages/core/test/paths.test.ts > isInside / absoluteFromStorePath > joins store paths under the root 0ms
+ ✓ packages/security/test/offline.test.ts > offline policy (fail closed) > allows in-process and hardened-git operations 1ms
+ ✓ packages/security/test/offline.test.ts > offline policy (fail closed) > refuses repo-influenced children and test execution: no verified isolation exists in this build 1ms
+ ✓ packages/security/test/offline.test.ts > offline policy (fail closed) > refuses when isolation is claimed available but NOT verified by a self-test 0ms
+ ✓ packages/security/test/offline.test.ts > offline policy (fail closed) > refuses when verification passed but isolation is unavailable 0ms
+ ✓ packages/security/test/offline.test.ts > offline policy (fail closed) > allows only when isolation is available AND verified 1ms
+ ✓ packages/security/test/offline.test.ts > network guard (test instrument) > records and blocks attempts, and restores originals on uninstall 1ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > accepts 22.13.0 1ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > accepts 22.23.3 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > accepts 24.0.0 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > accepts 26.1.0 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > rejects 20.14.0 with a clear message 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > rejects 22.12.9 with a clear message 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > rejects 18.0.0 with a clear message 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > rejects 21.7.3 with a clear message 0ms
+ ✓ packages/cli/test/nodeVersion.test.ts > node version gate > accepts the running test runtime 1ms
+ ✓ tests/acceptance/t13-deletion.test.ts > T13 deletion leaves the source repository intact > refuses to delete (or use) a store directory that is a symlink, and never touches the target 12152ms
+ ✓ tests/acceptance/s3c-autonomous.test.ts > S3C command line > lists providers truthfully and refuses to launch an agent 7538ms
+ ✓ tests/acceptance/s3c-review.test.ts > S3C review: resuming a handoff checks it really belongs to the task > refuses a handoff with another scope, one not created for the task, and a task whose worktree was revoked 6623ms
+ ✓ tests/acceptance/t03-t04-snapshots.test.ts > T4 dirty working tree is represented > two checkouts at the same SHA with different uncommitted edits differ; identical edits match 14422ms
+ ✓ tests/acceptance/t17-hostile-files.test.ts > T17 hostile files (no parser exists yet: size, binary, encoding, names, symlinks) > CLI reports exclusions by reason without ever echoing file contents 8173ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 5: mutate, index incrementally, compare to a clean index of the same tree 8603ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > a hostile committed-looking config can add excludes but cannot weaken defaults 6669ms
+ ✓ packages/cli/test/cli.test.ts > engbrain CLI surface > never prints raw errors from unexpected failures (only a generic message) 2ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > a crash at pre-publish leaves the previous graph fully intact and invisible edges never leak 10015ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 6: mutate, index incrementally, compare to a clean index of the same tree 5855ms
+ ✓ tests/acceptance/s3de-cli.test.ts > S3D/S3E command line > lists missing adapters, builds a manifest only for an operator, never decides ELIGIBLE without evidence, and reports what was NOT done 23911ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 7: mutate, index incrementally, compare to a clean index of the same tree 5508ms
+ ✓ tests/acceptance/t05-t19-crash-and-concurrency.test.ts > T19 concurrency > a reader in a separate PROCESS stays consistent while the writer publishes repeatedly (truly concurrent) 17672ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > a crash at mid-publish leaves the previous graph fully intact and invisible edges never leak 7951ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3-5 token budget, restart, summaries, read-only access and untrusted text > the CLI covers the read side: search, show, stale, summary, bugs/decisions related, evidence provenance, env, export and gc; the two-person rule can be enforced 51026ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 8: mutate, index incrementally, compare to a clean index of the same tree 4040ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > switching branches never leaks the other branch's nodes once re-indexed, and the stale index is flagged before 4426ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 9: mutate, index incrementally, compare to a clean index of the same tree 3573ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 1/2 search cost does not grow with records x history, and a flood of candidates cannot crowd approved records out of the scan window 4560ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 10: mutate, index incrementally, compare to a clean index of the same tree 3233ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B snapshots, crashes, branches and worktrees > two worktrees of the same repository keep separate graphs 4834ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 3/4 a proposer cannot retire an approved record; model-derived content (by declared origin OR evidence type) needs RELEVANT, independent, still-applying substantiation, and loses authority when it goes 3856ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B integrity checks detect corruption > validate reports dangling edges and contradictions when triggers are bypassed 2382ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 11: mutate, index incrementally, compare to a clean index of the same tree 3555ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B integrity checks detect corruption > published graph edges are immutable and cannot be inserted outside a building generation 2204ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 5 secrets are refused in EVERY stored field at write, and export withholds them from any field including predicates and JSON credential assignments 3846ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B hostile metadata cannot execute code, escape the repository or use the network > package.json scripts, tsconfig extends/paths and symlinked configs are data: nothing runs, nothing outside is read 2132ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A clean and incremental indexing are equivalent > seed 12: mutate, index incrementally, compare to a clean index of the same tree 3859ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 6 a record that could never go stale cannot be approved; verification needs a test_present predicate 3648ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 7/11 historical views show the status KNOWN then and are never authoritative; as-of values are strict ISO timestamps 3960ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A freshness is reported at the strength it was established > heuristic when clean, stale with the changed path when modified, hash_verified only after a full re-read 5430ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A freshness is reported at the strength it was established > a same-size edit with the modification time restored is caught by the verified check (and by ctime in the heuristic) 2577ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B CLI works from persisted data only > graph stats | dependencies | dependents | references | path | impact | cycles | validate, text and JSON 8874ms
+ ✓ tests/acceptance/p2b-graph.test.ts > P2B CLI works from persisted data only > validates arguments and refuses nonsense nodes 4425ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A freshness is reported at the strength it was established > `index --check` exits 0 only when hash-verified, and `status` reports parser coverage, revision and fingerprint from persisted data 5910ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 8 recording invalidations on a descendant branch never demotes a record for the branch it was made on 10448ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A CLI uses persisted data and reports measured statistics > symbols and imports read the database, not the working tree 3342ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 9/10 related lookups match scope paths exactly, and GC leaves no dangling links 2857ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A CLI uses persisted data and reports measured statistics > `index --stats` prints every required statistic, all measured 2357ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A CLI uses persisted data and reports measured statistics > validates arguments and refuses paths outside the repository 3247ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 12 CLI memory reads warn (or refuse with --fail-on-stale) when the index is behind the working tree 5643ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A hostile paths and configuration cannot escape the repository > symlinks to outside code are excluded; traversal specifiers and escaping tsconfig/package settings resolve to nothing 1787ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A local indexing performs no network operations > index, symbols, imports, status and --check make zero network attempts (in-process guard) 4199ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > 13 operators: the first needs an explicit --yes, an admin can revoke and rotate, the last admin cannot be revoked, an old token stops working, and verification honours the two-person rule 7291ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 equivalence and interruption > H1-6 an injected fault at every ingest and publish point leaves readers on the previous checkpoint, and the resumed run equals the uninterrupted one 311590ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A review regressions (end to end) > identical bytes under different extensions never poison each other, in either indexing order, and clean == incremental 3556ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A review regressions (end to end) > files named like excluded directories are indexed identically in git and non-git trees 1158ms
+ ✓ tests/acceptance/h3-memory.test.ts > H3 review regressions > fix rules and storage guards: the fixing commit must descend from the introducing one, a fix needs an approved bug, statuses cannot be rewritten, events cannot be deleted, an altered record is not trusted 5491ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A review regressions (end to end) > `index --check` and `status` say the index is stale when this build would extract differently (extractor/resolver version change) 3809ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A review regressions (end to end) > untrusted text cannot drive the terminal: control characters in specifiers and paths are shown as escapes 2197ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > P2A review regressions (end to end) > ambient `.d.ts` declarations, namespaces and `import = require` are indexed from a real repository 1248ms
+ ✓ tests/acceptance/p2a-code-intelligence.test.ts > Gate 0 fixture: malformed TSX > a broken .tsx file yields diagnostics and partial facts while valid TSX alongside it is unaffected 1279ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 equivalence and interruption > H1-6 SIGKILL at ingest and publish points: readers stay on the previous checkpoint and a resume completes 47696ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 equivalence and interruption > cancellation stops between batches without publishing and a later run resumes idempotently; budgets stop cleanly and resume 14376ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-7 two worktrees on the same HEAD keep separate dirty overlays; a clean tree has none 7949ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-8 rename accuracy: file renames carry a score; a symbol rename is only a CANDIDATE and ambiguous cases produce none 2860ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-9 committed secrets, sensitive paths, symlinks and submodules are recorded without being read or stored 2388ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-10 hostile repository configuration executes nothing and reads nothing outside the root 6996ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-11 commit subjects carrying instructions or terminal escapes are stored as sanitised untrusted text and change no state 2843ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-13 after a branch switch, changesSince returns only commits reachable from the current HEAD 6555ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > ledger facts survive garbage collection and `gc` still works 5606ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > H1-12 refresh, history and changes make zero network attempts under the guard (and the new modules import no network API) 9131ms
+ ✓ tests/acceptance/h1-ledger-2.test.ts > H1 overlays, renames, exclusions and hostile repositories > CLI: refresh output states partial history and the dirty overlay, history/changes print untrusted subjects safely, and bad input is a usage error 8109ms
+
+ Test Files  52 passed (52)
+      Tests  670 passed (670)
+   Start at  14:02:13
+   Duration  535.53s (tests 100%)
+
