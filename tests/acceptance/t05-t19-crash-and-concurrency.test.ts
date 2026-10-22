@@ -142,7 +142,7 @@ describe("T19 concurrency", () => {
       expect(validateGeneration(check.store.db, currentGenerationId(check.store.db)!).ok).toBe(true);
       check.close();
     }
-  }, 180_000);
+  }, 480_000); // correctness, not speed: ~42 s alone, but 25 rounds of two indexing child processes compete for CPU with the rest of the parallel suite
 
   it("a writer times out cleanly while another holds the lock, leaving the store untouched", async () => {
     const home = engbrainHome();

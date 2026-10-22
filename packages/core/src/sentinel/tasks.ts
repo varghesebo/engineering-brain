@@ -294,6 +294,19 @@ export function transitionTask(db: Database.Database, storeDir: string, id: stri
   }).immediate();
 }
 
+/**
+ * A new blocking finding withdraws what a person approved: approvals and execution authorizations are revoked and an APPROVAL_REQUIRED / ELIGIBLE task is blocked, so eligibility never outlives an
+ * open blocking finding (findings are not evidence, so the evidence head alone would not have invalidated the approvals).
+ */
+export function withdrawApprovals(db: Database.Database, storeDir: string, id: string, reason: string, now?: Date): void {
+  const task = getTask(db, id);
+  if (task.state === "APPROVAL_REQUIRED" || task.state === "ELIGIBLE_FOR_APPROVAL") {
+    systemBlock(db, storeDir, id, `eligibility withdrawn: ${reason}`, now);
+  } else {
+    revokeAuthority(db, storeDir, id, false);
+  }
+}
+
 /** The controller itself stops a task (budget exhausted, concurrent change, recurrent failure): BLOCKED with a reason, every approval and execution authorization revoked. */
 export function systemBlock(db: Database.Database, storeDir: string, id: string, reason: string, now?: Date): TaskRow {
   return db.transaction((): TaskRow => {
@@ -303,11 +316,27 @@ export function systemBlock(db: Database.Database, storeDir: string, id: string,
     }
     const at = clock(now).toISOString();
     const revision = task.revision + 1;
-    db.prepare("UPDATE sentinel_tasks SET state = 'BLOCKED', revision = ?, blocked_reason = ?, updated_at = ? WHERE task_id = ?").run(revision, reason.slice(0, SENTINEL_LIMITS.reason), at, id);
-    revokeAuthority(db, storeDir, id, false);
+    // a controller stop is a real stop: authority, queued work, the lease and every agent capability are withdrawn (a person re-plans and re-issues)
+    db.prepare("UPDATE sentinel_tasks SET state = 'BLOCKED', revision = ?, blocked_reason = ?, claimed_by = NULL, lease_expires = NULL, lease_hash = NULL, cap_epoch = cap_epoch + 1, updated_at = ? WHERE task_id = ?").run(revision, reason.slice(0, SENTINEL_LIMITS.reason), at, id);
+    revokeAuthority(db, storeDir, id, true);
     appendEvent(db, storeDir, id, at, "system_block", task.state, "BLOCKED", { principal: "controller", role: null, operator: null }, revision, { reason: reason.slice(0, SENTINEL_LIMITS.reason) });
     reseal(db, storeDir, id);
     return getTask(db, id);
+  }).immediate();
+}
+
+/**
+ * Records that a principal ACTED on a task in a role without changing its state (e.g. proposed or decided an adversarial hypothesis). It goes into the signed event log, so separation of duties
+ * (`assertCanApprove`, `assertCanBuild`) sees it: someone who reviewed or attacked the work cannot later approve it under the same name.
+ */
+export function recordTaskAct(db: Database.Database, storeDir: string, id: string, kind: string, principal: string, role: Role, payload: Record<string, unknown> = {}, now?: Date): void {
+  if (!/^[a-z][a-z0-9_]{1,39}$/.test(kind)) {
+    throw new EngbrainError("POLICY_REFUSED", "an act kind is a lowercase word");
+  }
+  db.transaction(() => {
+    const task = getTask(db, id);
+    appendEvent(db, storeDir, id, clock(now).toISOString(), kind, task.state, task.state, { principal, role, operator: null }, task.revision, payload);
+    reseal(db, storeDir, id);
   }).immediate();
 }
 
@@ -421,7 +450,9 @@ export function recordScopeCheck(db: Database.Database, storeDir: string, id: st
   const task = getTask(db, id);
   const scope = JSON.parse(task.scope_json) as string[];
   const inScope = (p: string): boolean => scope.some((s) => p === s || (s.endsWith("/") ? p.startsWith(s) : p.startsWith(`${s}/`)));
-  const violations = [...new Set(changedPaths)].filter((p) => !inScope(p)).sort();
+  // a path that is not plainly repository-relative (absolute, `..`, empty segment, backslash) can never count as inside the scope
+  const plain = (p: string): boolean => !p.startsWith("/") && !p.includes("\\") && !p.split("/").some((seg) => seg === ".." || seg === "." || seg === "");
+  const violations = [...new Set(changedPaths)].filter((p) => !plain(p) || !inScope(p)).sort();
   const outcome = violations.length === 0 ? "passed" : "failed";
   appendEvidence(db, storeDir, id, { origin: "machine", kind: "scope_check", checkId: "scope", outcome, payload: { changed: changedPaths.length, violations: violations.slice(0, 50), violationCount: violations.length } }, who, currentFingerprint, now);
   return { outcome, violations };
@@ -751,6 +782,7 @@ export function cancelTask(db: Database.Database, storeDir: string, id: string, 
     const revision = current.revision + 1;
     db.prepare("UPDATE sentinel_tasks SET state = 'CANCELLED', revision = ?, blocked_reason = ?, claimed_by = NULL, lease_expires = NULL, lease_hash = NULL, updated_at = ? WHERE task_id = ?").run(revision, why, at.toISOString(), id);
     revokeAuthority(db, storeDir, id, true);
+    db.prepare("UPDATE sentinel_worktrees SET status = 'revoked' WHERE task_id = ?").run(id);
     appendEvent(db, storeDir, id, at.toISOString(), "cancelled", current.state, "CANCELLED", { principal: actor.id, role: null, operator: actor }, revision, { reason: why });
     reseal(db, storeDir, id);
     return getTask(db, id);

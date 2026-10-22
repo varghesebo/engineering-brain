@@ -10,6 +10,7 @@ import { requireRole, withLock, type Actor } from "../memory/operators.js";
 import { prep } from "../memory/prepared.js";
 import { findSecretIn } from "../memory/records.js";
 import { EVIDENCE_FORMATS, parseEvidence, type EvidenceFormat } from "./importers.js";
+import type { AssuranceDetail } from "./assuranceTypes.js";
 
 /**
  * Imported CI/test evidence. An unsigned artifact is a CLAIM: it is stored QUARANTINED and can approve nothing. It becomes usable only when
@@ -195,6 +196,9 @@ export function importEvidence(db: Database.Database, storeDir: string, input: I
     normalized.coverage.forEach((c, i) => ic.run(id, i, c.file, c.testName, c.linesFound, c.linesHit, JSON.stringify(c.hitLines)));
     const iff = db.prepare("INSERT INTO evidence_findings (import_id, ordinal, tool, rule, level, file, line, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     normalized.findings.forEach((f, i) => iff.run(id, i, f.tool, f.rule, f.level, f.file, f.line, f.message));
+    if (normalized.assurance !== undefined) {
+      db.prepare("INSERT INTO evidence_assurance (import_id, detail_json) VALUES (?, ?)").run(id, JSON.stringify(normalized.assurance));
+    }
     return db.prepare("SELECT * FROM evidence_imports WHERE import_id = ?").get(id) as ImportRow;
   }).immediate();
 }
@@ -398,4 +402,10 @@ export function verificationStatus(db: Database.Database, options: { file?: stri
     truncated = truncated || usable.length > VERIFICATION_LIMITS.results;
     return { usable: usable.slice(0, VERIFICATION_LIMITS.results), perImport, quarantined, imports: total, truncated };
   })();
+}
+
+/** The structured adversarial-assurance detail stored with an import (mutants, property seed and shrink, formal result, race schedule), or null. */
+export function assuranceDetail(db: Database.Database, importId: string): AssuranceDetail | null {
+  const row = db.prepare("SELECT detail_json AS d FROM evidence_assurance WHERE import_id = ?").get(importId) as { d: string } | undefined;
+  return row === undefined ? null : (JSON.parse(row.d) as AssuranceDetail);
 }

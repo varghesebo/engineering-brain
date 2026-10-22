@@ -1,13 +1,14 @@
 import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { join } from "node:path";
 import {
-  addTraceLink, authorizeWorktree, checkWorktree, detectProviders, launchProvider, listFindings, resolveFinding, approveTask, authenticate, authorizeExecution, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, traceabilityReport, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
+  assuranceReport, buildManifest, decide, unsupportedTechniques, addFinding, createTaskHandoff, enforceWorktree, recordIteration, resumeFromHandoff, startRepair, addTraceLink, authorizeWorktree, checkWorktree, detectProviders, launchProvider, listFindings, resolveFinding, approveTask, authenticate, authorizeExecution, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, traceabilityReport, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
   Store, taskReport, type Profile, type Role
 } from "@engbrain/core";
 import type { CliContext } from "../context.js";
 import { EXIT, printable, printJsonOrText, type Io } from "../output.js";
 
-export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined; path: string | undefined; resolve: string | undefined; disposition: string | undefined; check: string | undefined; importId: string | undefined; requirement: number | undefined; behavior: string | undefined; test: string | undefined; testName: string | undefined; run: boolean; explain: boolean }
+export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined; path: string | undefined; resolve: string | undefined; disposition: string | undefined; declared: string[]; severity: string | undefined; repro: string | undefined; evidenceSeq: number | undefined; evidenceCheck: string | undefined; evidenceFile: string | undefined; evidenceLine: number | undefined; sha: string | undefined; key: string | undefined; tokens: number | undefined; cost: number | undefined; elapsed: number | undefined; failure: string | undefined; maxIterations: number | undefined; handoffId: string | undefined; check: string | undefined; importId: string | undefined; requirement: number | undefined; behavior: string | undefined; test: string | undefined; testName: string | undefined; run: boolean; explain: boolean }
 
 const usage = (io: Io, message: string): number => {
   io.stderr(`error: ${message}\n`);
@@ -22,7 +23,7 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
   const sub = o.positionals[0];
   /** Acts that bind to the source tree need a HASH-VERIFIED index (every file re-read), not the cheap heuristic: the fingerprint must describe the files as they are. */
   const bindsSource = (sub === "plan" && !o.dryRun) || ["approve", "authorize", "check-scope", "revalidate", "import"].includes(sub ?? "") || (sub === "verify" && o.run) || (sub === "worktree" && o.positionals[1] === "authorize");
-  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "") || (sub === "review" && o.resolve !== undefined) || (sub === "trace" && o.positionals[1] === "add");
+  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "") || (sub === "review" && (o.resolve !== undefined || o.positionals[1] === "add")) || sub === "repair" || sub === "task-handoff" || sub === "manifest" || sub === "decide" || (sub === "worktree" && o.positionals[1] === "check" && io.env["ENGBRAIN_SENTINEL_CAPABILITY"] !== undefined) || (sub === "trace" && o.positionals[1] === "add");
   const open = { root: context.root, git: context.git, hardenedGit: context.hardenedGit, installId: context.installId };
   const store = writes ? await Store.open(open) : await Store.openReadOnly(open);
   try {
@@ -33,13 +34,13 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         io.stderr(`error: the index is ${fresh.level}, not hash-verified: run \`engbrain refresh\` first (a task is bound to the source as it is on disk)\n`);
         return EXIT.refused;
       }
-    } else if (sub !== "cancel" && sub !== "capability" && sub !== "providers" && sub !== "run") {
+    } else if (!["cancel", "capability", "providers", "run", "adapters"].includes(sub ?? "")) {
       const fresh = await checkFreshness(store, context.git, context.hardenedGit, { verify: false });
       if (fresh.level === "stale" || fresh.level === "unknown") {
         io.stderr(`warning: the index is ${fresh.level}: reports describe the last published generation\n`);
       }
     }
-    const fingerprint = ["cancel", "capability", "providers", "run"].includes(sub ?? "") ? "" : repositoryFingerprint(db);
+    const fingerprint = ["cancel", "capability", "providers", "run", "adapters"].includes(sub ?? "") ? "" : repositoryFingerprint(db);
     switch (sub) {
       case "plan": {
         const profile = (o.profile ?? "A1") as Profile;
@@ -183,14 +184,113 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
           printJsonOrText(io, json, { files: r.files }, `worktree authorized (${r.files} files recorded as the baseline); changes outside the task scope, to existing tests or policy, or not declared will be flagged`);
           return EXIT.ok;
         }
-        const report = checkWorktree(db, id);
+        const token = io.env["ENGBRAIN_SENTINEL_CAPABILITY"];
+        const declared = o.declared.length > 0 ? o.declared : undefined;
+        // with a verification capability the check is ENFORCED: scope evidence is recorded, a protected change opens a blocking finding, an undeclared change pauses the task
+        const report = token === undefined ? checkWorktree(db, id, declared) : enforceWorktree(db, store.dir, id, { capability: token }, fingerprint, declared);
         printJsonOrText(io, json, { report }, [`added ${report.added.length}, modified ${report.modified.length}, deleted ${report.deleted.length}`, ...report.unauthorized.map((p) => `UNAUTHORIZED ${printable(p)}`), ...report.protectedChanges.map((p) => `PROTECTED (test/policy) ${printable(p)}`), report.ok ? "ok" : "NOT ok"].join("\n"));
         return report.ok ? EXIT.ok : EXIT.error;
+      }
+      case "adapters": {
+        const gaps = unsupportedTechniques(db, process.platform);
+        printJsonOrText(io, json, { platform: process.platform, notAvailable: gaps }, [`platform ${process.platform}: techniques without an available adapter (they can never pass):`, ...gaps.map((g) => `  ${g.technique.padEnd(16)} ${g.state}${g.reason === "" ? "" : `  (${printable(g.reason)})`}`)].join("\n"));
+        return EXIT.ok;
+      }
+      case "manifest": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel manifest <id>");
+        }
+        const m = buildManifest(db, store.dir, id, authenticate(store.dir, io.env), fingerprint, {});
+        printJsonOrText(io, json, { manifest: { id: m.manifest_id, sha256: m.body_sha256 } }, `manifest ${m.manifest_id} (sha256 ${m.body_sha256}) recorded for the current source; it goes stale on any source, policy or evidence change`);
+        return EXIT.ok;
+      }
+      case "decide": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel decide <id>");
+        }
+        const d = decide(db, store.dir, id, fingerprint, {});
+        printJsonOrText(io, json, { decision: d }, [`${d.outcome}`, ...d.reasons.map((r) => `  - ${printable(r)}`), ...d.unmeasured.map((u) => `  unmeasured: ${printable(u)}`), d.note].join("\n"));
+        return d.outcome === "ELIGIBLE_FOR_APPROVAL" ? EXIT.ok : EXIT.error;
+      }
+      case "assurance-report": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel assurance-report <id>");
+        }
+        const r = assuranceReport(db, store.dir, id, fingerprint, {});
+        printJsonOrText(io, json, { report: r.json }, r.text);
+        return EXIT.ok;
+      }
+      case "repair": {
+        const action = o.positionals[1];
+        const id = o.positionals[2];
+        if ((action !== "start" && action !== "record") || id === undefined) {
+          return usage(io, "sentinel repair start <id> [--max-iterations n] | repair record <id> --key <k> --tokens n --cost n --elapsed ms --failure <signature>");
+        }
+        if (action === "start") {
+          const state = startRepair(db, id, authenticate(store.dir, io.env), o.maxIterations === undefined ? {} : { maxIterations: o.maxIterations });
+          printJsonOrText(io, json, { state }, `repair loop started: at most ${state.budget.maxIterations} iterations, ${state.budget.maxSameFailure} repeats of one failure`);
+          return EXIT.ok;
+        }
+        if (o.key === undefined || o.failure === undefined) {
+          return usage(io, "repair record needs --key and --failure (and usage numbers)");
+        }
+        const token = io.env["ENGBRAIN_SENTINEL_CAPABILITY"];
+        const who = token !== undefined ? { capability: token } : { operator: authenticate(store.dir, io.env) };
+        const r = recordIteration(db, store.dir, id, who, { iterationKey: o.key, tokens: o.tokens ?? 0, costMicro: o.cost ?? 0, elapsedMs: o.elapsed ?? 0, failureSignature: o.failure });
+        printJsonOrText(io, json, { result: r }, r.allowed ? `iteration ${r.state.iterations} recorded; wait ${r.backoffMs} ms before the next` : `STOPPED: ${printable(r.reason ?? "")} (the task is BLOCKED)`);
+        return r.allowed ? EXIT.ok : EXIT.refused;
+      }
+      case "task-handoff": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel task-handoff <id>");
+        }
+        const handoff = createTaskHandoff(db, store.dir, id, authenticate(store.dir, io.env), fingerprint);
+        printJsonOrText(io, json, { handoff }, `handoff ${handoff} written; resume with \`sentinel resume ${id} --handoff ${handoff}\``);
+        return EXIT.ok;
+      }
+      case "resume": {
+        const id = o.positionals[1];
+        if (id === undefined || o.handoffId === undefined) {
+          return usage(io, "sentinel resume <id> --handoff <handoff id>");
+        }
+        const view = resumeFromHandoff(db, store.dir, o.handoffId, id, fingerprint);
+        printJsonOrText(io, json, { resume: view }, [`${view.taskId}  ${view.state}  revision ${view.revision}`, ...view.openFindings.map((f) => `open ${f.severity} finding: ${printable(f.title)}`), `pending checks: ${view.pendingChecks.join(", ") || "none"}`].join("\n"));
+        return EXIT.ok;
       }
       case "review": {
         const id = o.positionals[1];
         if (id === undefined) {
           return usage(io, "sentinel review <id> [--resolve <finding id> --disposition fixed|rejected|accepted_risk --reason <text>]");
+        }
+        if (o.positionals[1] === "add") {
+          const taskId = o.positionals[2];
+          const token = io.env["ENGBRAIN_SENTINEL_CAPABILITY"];
+          if (taskId === undefined || token === undefined || o.title === undefined || o.repro === undefined || (o.severity !== "blocking" && o.severity !== "advisory")) {
+            return usage(io, "sentinel review add <id> --severity blocking|advisory --title <t> --repro <steps> (--evidence-seq n | --evidence-check c | --evidence-file p --evidence-line n --sha <sha256>) with a reviewer capability in ENGBRAIN_SENTINEL_CAPABILITY");
+          }
+          const evidence = o.evidenceSeq !== undefined ? { kind: "evidence" as const, seq: o.evidenceSeq } : o.evidenceCheck !== undefined ? { kind: "check" as const, checkId: o.evidenceCheck }
+            : o.evidenceFile !== undefined && o.sha !== undefined && o.evidenceLine !== undefined ? { kind: "file" as const, path: o.evidenceFile, sha256: o.sha, line: o.evidenceLine } : null;
+          if (evidence === null) {
+            return usage(io, "a finding needs evidence: --evidence-seq, --evidence-check, or --evidence-file with --evidence-line and --sha");
+          }
+          const worktree = db.prepare("SELECT path FROM sentinel_worktrees WHERE task_id = ? AND status = 'active'").get(taskId) as { path: string } | undefined;
+          const hashOf = (p: string): string | null => {
+            if (worktree === undefined || p.startsWith("/") || p.split("/").includes("..")) {
+              return null;
+            }
+            try {
+              return createHash("sha256").update(readFileSync(join(worktree.path, p))).digest("hex");
+            } catch {
+              return null;
+            }
+          };
+          const findingId = addFinding(db, store.dir, taskId, { severity: o.severity, title: o.title, evidence, reproduction: o.repro }, token, fingerprint, hashOf);
+          printJsonOrText(io, json, { finding: findingId }, `finding ${findingId} recorded (its evidence was checked; a blocking finding withdraws approvals)`);
+          return EXIT.ok;
         }
         if (o.resolve !== undefined) {
           if (o.disposition === undefined || o.reason === undefined || !["fixed", "rejected", "accepted_risk"].includes(o.disposition)) {
@@ -255,7 +355,7 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         return EXIT.ok;
       }
       default:
-        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain|--run | import <id> | trace <id> | providers | run <id> | worktree authorize|check <id> | review <id> | evidence <id> | capability issue <id> | cancel <id>");
+        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain|--run | import <id> | trace <id> | providers | run <id> | worktree authorize|check <id> | review <id> | review add <id> | repair start|record <id> | task-handoff <id> | resume <id> | evidence <id> | adapters | manifest <id> | decide <id> | assurance-report <id> | capability issue <id> | cancel <id>");
     }
   } finally {
     store.close();

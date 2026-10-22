@@ -8,6 +8,8 @@ export interface Migration {
   name: string;
   /** Runs inside a transaction. Forward-only: there are no down migrations (restore the pre-migration backup instead). */
   up(db: Database.Database): void;
+  /** Rebuilds a table (SQLite's documented 12-step procedure): foreign keys are switched off around the transaction and checked before they are switched back on. */
+  rebuildsTables?: boolean;
 }
 
 /**
@@ -978,7 +980,7 @@ CREATE INDEX idx_sentinel_findings_task ON sentinel_findings(task_id, dispositio
 CREATE TRIGGER sentinel_findings_identity BEFORE UPDATE ON sentinel_findings
 WHEN NEW.finding_id IS NOT OLD.finding_id OR NEW.task_id IS NOT OLD.task_id OR NEW.at IS NOT OLD.at OR NEW.source_role IS NOT OLD.source_role OR NEW.source_principal IS NOT OLD.source_principal
   OR NEW.severity IS NOT OLD.severity OR NEW.title IS NOT OLD.title OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.reproduction IS NOT OLD.reproduction OR NEW.check_id IS NOT OLD.check_id
-  OR (OLD.disposition != 'open' AND NEW.disposition IS NOT OLD.disposition)
+  OR (OLD.disposition != 'open' AND (NEW.disposition IS NOT OLD.disposition OR NEW.disposition_by IS NOT OLD.disposition_by OR NEW.disposition_reason IS NOT OLD.disposition_reason OR NEW.disposition_at IS NOT OLD.disposition_at))
 BEGIN SELECT RAISE(ABORT, 'a finding is immutable; only its disposition can be decided, once'); END;
 CREATE TRIGGER sentinel_findings_no_delete BEFORE DELETE ON sentinel_findings BEGIN SELECT RAISE(ABORT, 'findings are never deleted'); END;
 CREATE TABLE sentinel_repair (
@@ -988,9 +990,281 @@ CREATE TABLE sentinel_repair (
   tokens INTEGER NOT NULL DEFAULT 0,
   cost_micro INTEGER NOT NULL DEFAULT 0,
   elapsed_ms INTEGER NOT NULL DEFAULT 0,
+  started_at TEXT NOT NULL DEFAULT '',
+  next_allowed_at TEXT NOT NULL DEFAULT '',
   signatures_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE TABLE sentinel_repair_keys (task_id TEXT NOT NULL, iteration_key TEXT NOT NULL, PRIMARY KEY (task_id, iteration_key)) WITHOUT ROWID;
+`;
+
+const SCHEMA_V11 = `
+CREATE TABLE evidence_assurance (
+  import_id TEXT PRIMARY KEY REFERENCES evidence_imports(import_id),
+  detail_json TEXT NOT NULL
+);
+CREATE TRIGGER evidence_assurance_immutable BEFORE UPDATE ON evidence_assurance BEGIN SELECT RAISE(ABORT, 'imported detail is immutable'); END;
+CREATE TRIGGER evidence_assurance_no_delete BEFORE DELETE ON evidence_assurance BEGIN SELECT RAISE(ABORT, 'imported detail is immutable'); END;
+-- Sentinel 3D: adversarial assurance records. Nothing here executes a tool: results arrive as imported artifacts (quarantine/signature rules apply) and are recorded with their limits stated.
+CREATE TABLE sentinel_adapters (
+  adapter_id TEXT PRIMARY KEY,
+  technique TEXT NOT NULL CHECK (technique IN ('property', 'mutation', 'fuzz', 'race', 'fault_injection', 'sast', 'auth_boundary', 'supply_chain', 'formal')),
+  tool TEXT NOT NULL,
+  tool_version TEXT NOT NULL,
+  license TEXT NOT NULL,
+  platforms_json TEXT NOT NULL,
+  isolation TEXT NOT NULL CHECK (isolation IN ('none', 'sandbox', 'container', 'vm')),
+  needs_network INTEGER NOT NULL CHECK (needs_network IN (0, 1)),
+  status TEXT NOT NULL CHECK (status IN ('available', 'unsupported', 'disabled')),
+  status_reason TEXT NOT NULL DEFAULT '',
+  registered_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  UNIQUE (tool, tool_version),
+  CHECK (status = 'available' OR length(status_reason) > 0)
+);
+CREATE TRIGGER sentinel_adapters_identity BEFORE UPDATE ON sentinel_adapters
+WHEN NEW.adapter_id IS NOT OLD.adapter_id OR NEW.technique IS NOT OLD.technique OR NEW.tool IS NOT OLD.tool OR NEW.tool_version IS NOT OLD.tool_version OR NEW.license IS NOT OLD.license OR NEW.platforms_json IS NOT OLD.platforms_json
+  OR NEW.isolation IS NOT OLD.isolation OR NEW.needs_network IS NOT OLD.needs_network OR NEW.registered_by IS NOT OLD.registered_by OR NEW.at IS NOT OLD.at
+BEGIN SELECT RAISE(ABORT, 'an adapter is immutable except for its status'); END;
+CREATE TRIGGER sentinel_adapters_no_delete BEFORE DELETE ON sentinel_adapters BEGIN SELECT RAISE(ABORT, 'adapters are never deleted'); END;
+
+CREATE TABLE sentinel_target_allowlist (
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  target TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('fixture', 'local_process')),
+  allowed_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (task_id, target)
+) WITHOUT ROWID;
+CREATE TRIGGER sentinel_allowlist_no_update BEFORE UPDATE ON sentinel_target_allowlist BEGIN SELECT RAISE(ABORT, 'the target allowlist is append-only'); END;
+CREATE TRIGGER sentinel_allowlist_no_delete BEFORE DELETE ON sentinel_target_allowlist BEGIN SELECT RAISE(ABORT, 'the target allowlist is append-only'); END;
+
+CREATE TABLE sentinel_invariants (
+  invariant_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  kind TEXT NOT NULL CHECK (kind IN ('idempotency', 'ledger_balance', 'monotonic_state', 'acl_denial', 'custom')),
+  statement TEXT NOT NULL,
+  statement_sha256 TEXT NOT NULL,
+  approved_by TEXT NOT NULL,
+  approved_at TEXT NOT NULL,
+  supersedes TEXT
+);
+CREATE TRIGGER sentinel_invariants_immutable BEFORE UPDATE ON sentinel_invariants BEGIN SELECT RAISE(ABORT, 'an approved invariant never changes: approve a new one that supersedes it'); END;
+CREATE TRIGGER sentinel_invariants_no_delete BEFORE DELETE ON sentinel_invariants BEGIN SELECT RAISE(ABORT, 'invariants are never deleted'); END;
+
+CREATE TABLE sentinel_hypotheses (
+  hyp_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  failure_mode TEXT NOT NULL CHECK (failure_mode IN ('boundary_input', 'malformed_data', 'duplicate_request', 'concurrent_write', 'event_drop', 'event_duplicate', 'event_reorder', 'retry_storm', 'db_downtime', 'restart', 'resource_limit', 'auth_privilege')),
+  statement TEXT NOT NULL,
+  target TEXT NOT NULL,
+  invariant_id TEXT REFERENCES sentinel_invariants(invariant_id),
+  status TEXT NOT NULL CHECK (status IN ('proposed', 'testing', 'refuted', 'confirmed', 'not_run', 'unsupported')),
+  proposed_by TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+CREATE TRIGGER sentinel_hypotheses_identity BEFORE UPDATE ON sentinel_hypotheses
+WHEN NEW.hyp_id IS NOT OLD.hyp_id OR NEW.task_id IS NOT OLD.task_id OR NEW.failure_mode IS NOT OLD.failure_mode OR NEW.statement IS NOT OLD.statement OR NEW.target IS NOT OLD.target OR NEW.invariant_id IS NOT OLD.invariant_id OR NEW.proposed_by IS NOT OLD.proposed_by OR NEW.at IS NOT OLD.at
+BEGIN SELECT RAISE(ABORT, 'a hypothesis is immutable except for its status'); END;
+CREATE TRIGGER sentinel_hypotheses_no_delete BEFORE DELETE ON sentinel_hypotheses BEGIN SELECT RAISE(ABORT, 'hypotheses are never deleted'); END;
+
+CREATE TABLE sentinel_mutation_runs (
+  run_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  import_id TEXT NOT NULL,
+  killed INTEGER NOT NULL,
+  survived INTEGER NOT NULL,
+  equivalent INTEGER NOT NULL,
+  inconclusive INTEGER NOT NULL,
+  score_pct REAL,
+  claims_proof INTEGER NOT NULL DEFAULT 0 CHECK (claims_proof = 0),
+  at TEXT NOT NULL
+);
+CREATE TABLE sentinel_mutants (
+  run_id TEXT NOT NULL REFERENCES sentinel_mutation_runs(run_id),
+  mutant_key TEXT NOT NULL,
+  file TEXT NOT NULL,
+  line INTEGER,
+  mutator TEXT,
+  status TEXT NOT NULL CHECK (status IN ('killed', 'survived', 'equivalent', 'inconclusive')),
+  decided_by TEXT,
+  equivalent_basis TEXT,
+  PRIMARY KEY (run_id, mutant_key),
+  CHECK (status != 'equivalent' OR (decided_by IS NOT NULL AND length(equivalent_basis) > 0))
+) WITHOUT ROWID;
+CREATE TRIGGER sentinel_mutation_runs_immutable BEFORE UPDATE ON sentinel_mutation_runs BEGIN SELECT RAISE(ABORT, 'a mutation run is immutable'); END;
+CREATE TRIGGER sentinel_mutants_no_delete BEFORE DELETE ON sentinel_mutants BEGIN SELECT RAISE(ABORT, 'mutants are never deleted'); END;
+
+CREATE TABLE sentinel_formal (
+  formal_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  import_id TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  tool_version TEXT NOT NULL,
+  model_sha256 TEXT NOT NULL,
+  spec_version TEXT NOT NULL,
+  assumptions_json TEXT NOT NULL CHECK (json_valid(assumptions_json) AND json_array_length(assumptions_json) > 0),
+  result_digest TEXT NOT NULL,
+  result TEXT NOT NULL CHECK (result IN ('counterexample', 'scoped_success', 'unknown', 'unsupported', 'error')),
+  counterexample_json TEXT,
+  applicability_json TEXT NOT NULL CHECK (json_valid(applicability_json)),
+  scope TEXT NOT NULL DEFAULT 'model_only' CHECK (scope = 'model_only'),
+  claims_application_proof INTEGER NOT NULL DEFAULT 0 CHECK (claims_application_proof = 0),
+  at TEXT NOT NULL,
+  CHECK ((result = 'counterexample') = (counterexample_json IS NOT NULL))
+);
+CREATE TRIGGER sentinel_formal_immutable BEFORE UPDATE ON sentinel_formal BEGIN SELECT RAISE(ABORT, 'a formal result is immutable'); END;
+
+CREATE TABLE sentinel_repro (
+  repro_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  hyp_id TEXT REFERENCES sentinel_hypotheses(hyp_id),
+  import_id TEXT NOT NULL,
+  seed TEXT,
+  minimized_input TEXT,
+  shrink_steps INTEGER,
+  artifact_hashes_json TEXT NOT NULL,
+  tool_json TEXT NOT NULL,
+  replay_hint TEXT,
+  defect_ref TEXT,
+  memory_candidate_id TEXT,
+  at TEXT NOT NULL
+);
+CREATE TRIGGER sentinel_repro_immutable BEFORE UPDATE ON sentinel_repro WHEN OLD.memory_candidate_id IS NOT NULL OR NEW.repro_id IS NOT OLD.repro_id OR NEW.import_id IS NOT OLD.import_id OR NEW.seed IS NOT OLD.seed OR NEW.minimized_input IS NOT OLD.minimized_input
+BEGIN SELECT RAISE(ABORT, 'a reproduction record is immutable except for linking its memory candidate once'); END;
+
+CREATE TABLE sentinel_quotas (
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  technique TEXT NOT NULL,
+  max_runs INTEGER NOT NULL CHECK (max_runs >= 0),
+  max_cases INTEGER NOT NULL CHECK (max_cases >= 0),
+  max_seconds INTEGER NOT NULL CHECK (max_seconds >= 0),
+  used_runs INTEGER NOT NULL DEFAULT 0,
+  used_cases INTEGER NOT NULL DEFAULT 0,
+  used_seconds INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (task_id, technique),
+  CHECK (used_runs <= max_runs AND used_cases <= max_cases AND used_seconds <= max_seconds)
+) WITHOUT ROWID;
+CREATE TRIGGER sentinel_quotas_monotonic BEFORE UPDATE ON sentinel_quotas
+WHEN NEW.max_runs IS NOT OLD.max_runs OR NEW.max_cases IS NOT OLD.max_cases OR NEW.max_seconds IS NOT OLD.max_seconds OR NEW.used_runs < OLD.used_runs OR NEW.used_cases < OLD.used_cases OR NEW.used_seconds < OLD.used_seconds
+BEGIN SELECT RAISE(ABORT, 'a quota can only be consumed, never raised or refunded'); END;
+`;
+
+const SCHEMA_V12 = `
+-- Sentinel 3E (local slice): release manifests, verifier public keys, principal grants, exceptions, controller decisions, incident reviews and export audit. Nothing here releases anything.
+CREATE TABLE sentinel_manifests (
+  manifest_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  task_revision INTEGER NOT NULL,
+  base_rev TEXT,
+  proposed_rev TEXT,
+  verified_rev TEXT,
+  dirty_hash TEXT,
+  source_fingerprint TEXT NOT NULL,
+  env_fingerprint TEXT NOT NULL,
+  policy_hash TEXT NOT NULL,
+  evidence_head TEXT NOT NULL,
+  body_json TEXT NOT NULL CHECK (json_valid(body_json)),
+  body_sha256 TEXT NOT NULL CHECK (length(body_sha256) = 64),
+  created_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  mac TEXT NOT NULL
+);
+CREATE TRIGGER sentinel_manifests_immutable BEFORE UPDATE ON sentinel_manifests BEGIN SELECT RAISE(ABORT, 'a manifest is immutable'); END;
+CREATE TRIGGER sentinel_manifests_no_delete BEFORE DELETE ON sentinel_manifests BEGIN SELECT RAISE(ABORT, 'manifests are never deleted'); END;
+
+CREATE TABLE sentinel_verifier_keys (
+  key_id TEXT PRIMARY KEY,
+  principal TEXT NOT NULL,
+  algorithm TEXT NOT NULL CHECK (algorithm IN ('ed25519')),
+  public_key_pem TEXT NOT NULL CHECK (public_key_pem NOT LIKE '%PRIVATE KEY%'),
+  key_fingerprint TEXT NOT NULL UNIQUE,
+  registered_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  not_after TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('active', 'revoked')),
+  CHECK (registered_by != principal)
+);
+CREATE TRIGGER sentinel_verifier_keys_immutable BEFORE UPDATE ON sentinel_verifier_keys
+WHEN NEW.key_id IS NOT OLD.key_id OR NEW.principal IS NOT OLD.principal OR NEW.algorithm IS NOT OLD.algorithm OR NEW.public_key_pem IS NOT OLD.public_key_pem OR NEW.key_fingerprint IS NOT OLD.key_fingerprint
+  OR NEW.registered_by IS NOT OLD.registered_by OR NEW.at IS NOT OLD.at OR NEW.not_after IS NOT OLD.not_after OR (OLD.status = 'revoked' AND NEW.status != 'revoked')
+BEGIN SELECT RAISE(ABORT, 'a verifier key can only be revoked'); END;
+CREATE TRIGGER sentinel_verifier_keys_no_delete BEFORE DELETE ON sentinel_verifier_keys BEGIN SELECT RAISE(ABORT, 'verifier keys are never deleted'); END;
+
+CREATE TABLE sentinel_principal_grants (
+  grant_id TEXT PRIMARY KEY,
+  principal TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('approver', 'second_approver', 'exception_approver', 'auditor', 'exporter')),
+  repo_scope TEXT NOT NULL,
+  granted_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  revoked_at TEXT,
+  CHECK (granted_by != principal)
+);
+CREATE TRIGGER sentinel_grants_immutable BEFORE UPDATE ON sentinel_principal_grants
+WHEN NEW.grant_id IS NOT OLD.grant_id OR NEW.principal IS NOT OLD.principal OR NEW.role IS NOT OLD.role OR NEW.repo_scope IS NOT OLD.repo_scope OR NEW.granted_by IS NOT OLD.granted_by OR NEW.at IS NOT OLD.at OR OLD.revoked_at IS NOT NULL
+BEGIN SELECT RAISE(ABORT, 'a grant can only be revoked, once'); END;
+CREATE TRIGGER sentinel_grants_no_delete BEFORE DELETE ON sentinel_principal_grants BEGIN SELECT RAISE(ABORT, 'grants are never deleted'); END;
+
+CREATE TABLE sentinel_exceptions (
+  exception_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  check_id TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  approved_by TEXT,
+  risk_statement TEXT NOT NULL CHECK (length(risk_statement) > 0),
+  at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('requested', 'active', 'revoked')),
+  mac TEXT NOT NULL,
+  CHECK (approved_by IS NULL OR approved_by != requested_by)
+);
+CREATE TRIGGER sentinel_exceptions_flow BEFORE UPDATE ON sentinel_exceptions
+WHEN NEW.exception_id IS NOT OLD.exception_id OR NEW.task_id IS NOT OLD.task_id OR NEW.check_id IS NOT OLD.check_id OR NEW.requested_by IS NOT OLD.requested_by OR NEW.risk_statement IS NOT OLD.risk_statement
+  OR NEW.at IS NOT OLD.at OR NEW.expires_at IS NOT OLD.expires_at OR OLD.status = 'revoked' OR (OLD.status = 'active' AND NEW.status != 'revoked') OR (OLD.approved_by IS NOT NULL AND NEW.approved_by IS NOT OLD.approved_by)
+BEGIN SELECT RAISE(ABORT, 'an exception moves requested -> active -> revoked only'); END;
+CREATE TRIGGER sentinel_exceptions_no_delete BEFORE DELETE ON sentinel_exceptions BEGIN SELECT RAISE(ABORT, 'exceptions are never deleted'); END;
+
+CREATE TABLE sentinel_decisions (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  manifest_id TEXT,
+  outcome TEXT NOT NULL CHECK (outcome IN ('ELIGIBLE_FOR_APPROVAL', 'APPROVAL_REQUIRED', 'BLOCKED', 'FAILED', 'INCOMPLETE', 'STALE_EVIDENCE')),
+  reasons_json TEXT NOT NULL,
+  unmeasured_json TEXT NOT NULL,
+  policy_hash TEXT NOT NULL,
+  source_fingerprint TEXT NOT NULL,
+  at TEXT NOT NULL,
+  prev_hash TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  mac TEXT NOT NULL DEFAULT ''
+);
+CREATE TRIGGER sentinel_decisions_append_only_u BEFORE UPDATE ON sentinel_decisions BEGIN SELECT RAISE(ABORT, 'decisions are append-only'); END;
+CREATE TRIGGER sentinel_decisions_append_only_d BEFORE DELETE ON sentinel_decisions BEGIN SELECT RAISE(ABORT, 'decisions are append-only'); END;
+CREATE TRIGGER sentinel_decisions_ordered BEFORE INSERT ON sentinel_decisions WHEN NEW.seq > 0 AND NEW.seq <= COALESCE((SELECT MAX(seq) FROM sentinel_decisions), 0) BEGIN SELECT RAISE(ABORT, 'decisions cannot be replaced or back-filled'); END;
+
+CREATE TABLE sentinel_incident_reviews (
+  review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  incident_ref TEXT NOT NULL,
+  test_path TEXT,
+  reviewed_by TEXT NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('covered', 'not_covered', 'not_applicable')),
+  at TEXT NOT NULL
+);
+CREATE TRIGGER sentinel_incident_reviews_u BEFORE UPDATE ON sentinel_incident_reviews BEGIN SELECT RAISE(ABORT, 'incident reviews are append-only'); END;
+CREATE TRIGGER sentinel_incident_reviews_d BEFORE DELETE ON sentinel_incident_reviews BEGIN SELECT RAISE(ABORT, 'incident reviews are append-only'); END;
+
+CREATE TABLE sentinel_export_audit (
+  export_id TEXT PRIMARY KEY,
+  principal TEXT NOT NULL,
+  repo_scope TEXT NOT NULL,
+  classification TEXT NOT NULL CHECK (classification IN ('public', 'internal', 'confidential', 'restricted')),
+  content_sha256 TEXT NOT NULL,
+  redactions_json TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+CREATE TRIGGER sentinel_export_audit_u BEFORE UPDATE ON sentinel_export_audit BEGIN SELECT RAISE(ABORT, 'the export audit is append-only'); END;
+CREATE TRIGGER sentinel_export_audit_d BEFORE DELETE ON sentinel_export_audit BEGIN SELECT RAISE(ABORT, 'the export audit is append-only'); END;
 `;
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -1012,7 +1286,28 @@ export const MIGRATIONS: readonly Migration[] = [
       db.exec(SCHEMA_V9);
     }
   },
-  { version: 10, name: "sentinel worktrees, findings and repair budgets", up: (db) => db.exec(SCHEMA_V10) }
+  { version: 10, name: "sentinel worktrees, findings and repair budgets", up: (db) => db.exec(SCHEMA_V10) },
+  {
+    version: 11, name: "sentinel 3d adversarial assurance", rebuildsTables: true, up: (db) => {
+      // widen the evidence-import format CHECK by rebuilding the table (SQLite cannot alter a CHECK): copy, swap, recreate its indexes and triggers
+      const formats = "'junit', 'lcov', 'cobertura', 'sarif', 'jest', 'vitest', 'playwright', 'pytest'";
+      const wider = `${formats}, 'stryker', 'fastcheck', 'hypothesis', 'semgrep_json', 'tla', 'z3', 'race_log'`;
+      const table = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'evidence_imports'").get() as { sql: string };
+      if (!table.sql.includes(`format IN (${formats})`)) {
+        throw new EngbrainError("INVALID_CONFIG", "evidence_imports does not have the expected v7 shape: refusing to rebuild it");
+      }
+      const extras = db.prepare("SELECT sql FROM sqlite_master WHERE tbl_name = 'evidence_imports' AND type IN ('index', 'trigger') AND sql IS NOT NULL").all() as Array<{ sql: string }>;
+      db.exec(table.sql.replace("CREATE TABLE evidence_imports", "CREATE TABLE evidence_imports_v11").replace(`format IN (${formats})`, `format IN (${wider})`));
+      db.exec("INSERT INTO evidence_imports_v11 SELECT * FROM evidence_imports");
+      db.exec("DROP TABLE evidence_imports");
+      db.exec("ALTER TABLE evidence_imports_v11 RENAME TO evidence_imports");
+      for (const e of extras) {
+        db.exec(e.sql);
+      }
+      db.exec(SCHEMA_V11);
+    }
+  },
+  { version: 12, name: "sentinel 3e local enterprise assurance", up: (db) => db.exec(SCHEMA_V12) }
 ];
 
 export interface MigrationResult {
@@ -1060,10 +1355,22 @@ export function applyMigrations(
     if (migration.version <= from) {
       continue;
     }
-    db.transaction(() => {
-      migration.up(db);
-      db.pragma(`user_version = ${migration.version}`);
-    }).immediate();
+    if (migration.rebuildsTables === true) {
+      db.pragma("foreign_keys = OFF"); // only effective outside a transaction
+    }
+    try {
+      db.transaction(() => {
+        migration.up(db);
+        if (migration.rebuildsTables === true && (db.pragma("foreign_key_check") as unknown[]).length > 0) {
+          throw new EngbrainError("INTEGRITY_FAILED", `migration v${migration.version} would break a foreign key`);
+        }
+        db.pragma(`user_version = ${migration.version}`);
+      }).immediate();
+    } finally {
+      if (migration.rebuildsTables === true) {
+        db.pragma("foreign_keys = ON");
+      }
+    }
   }
   return { from, to: target, backupPath };
 }

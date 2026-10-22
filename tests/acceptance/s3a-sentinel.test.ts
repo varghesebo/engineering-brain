@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   appendEvidence, approveTask, assureTask, authorizeExecution, cancelTask, claimTask, createTask, dequeueWork, enqueueWork, evaluateEligibility, executionPermitted, getTask, issueCapability, LEGAL, macosSandboxExec,
-  noSandbox, probeCapabilities, recordScopeCheck, resumeInfo, revalidateTask, revokeCapabilities, runSyntheticWorker, saveCheckpoint, STATES, taskReport, transitionTask, updatePolicy, verifyTaskChain, type Actor, type Role, type SandboxBackend, type SelfTestResult
+  noSandbox, probeCapabilities, recordScopeCheck, resumeInfo, revalidateTask, revokeCapabilities, revokeExecution, runSyntheticWorker, saveCheckpoint, STATES, taskReport, transitionTask, updatePolicy, verifyTaskChain, type Actor, type Role, type SandboxBackend, type SelfTestResult
 } from "@engbrain/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { cleanupTempDirs, engbrainHome, makeGitRepo, runCli } from "../helpers/env.js";
@@ -19,6 +19,10 @@ const fp = (s: string): string => createHash("sha256").update(s).digest("hex");
 const T0 = new Date("2026-05-01T10:00:00.000Z");
 const at = (minutes: number): Date => new Date(T0.getTime() + minutes * 60_000);
 const FAKE_OK: SelfTestResult = { verified: true, detail: "test double", checks: [] };
+/** Unauthenticated CLI calls pass these explicitly, so a developer's own ENGBRAIN_OPERATOR in the shell cannot make a refusal test pass or fail by accident. */
+const NO_OPERATOR = { ENGBRAIN_OPERATOR: "", ENGBRAIN_OPERATOR_TOKEN: "" };
+/** Probed once at module load: the real-sandbox test is reported as skipped (with the reason in its name) rather than silently returning. */
+const REAL_SANDBOX = await probeCapabilities([macosSandboxExec]);
 
 /** A passthrough "sandbox" used ONLY to exercise the interface with the fixed synthetic programs; it confines nothing and says so. */
 const passthrough: SandboxBackend = { name: "test-passthrough", confines: [], doesNotLimit: ["everything"], selfTest: async () => FAKE_OK, wrap: (command, args) => ({ command, args }) };
@@ -69,7 +73,13 @@ describe("S3A state machine", () => {
       expect(() => transitionTask(db, dir, task.task_id, "ELIGIBLE_FOR_APPROVAL", { operator: ADMIN }, { now: at(1) })).toThrow(/assure|approve/);
       expect(() => transitionTask(db, dir, task.task_id, "CONTEXT_READY", { capability: cap(o, "builder", task.task_id, "b") }, { now: at(1) })).toThrow(/may not move/); // a builder cannot do the architect's step
       expect(() => transitionTask(db, dir, task.task_id, "CONTEXT_READY", { capability: "garbage.token" }, { now: at(1) })).toThrow(/invalid/);
-      expect(() => transitionTask(db, dir, task.task_id, "CONTEXT_READY", { capability: cap(o, "architect", "st_0000000000000000", "a") }, { now: at(1) })).toThrow();
+      // cross-task replay: a genuine token for task B, carrying the right epoch, is refused on task A by the task binding alone
+      const other = newTask(o);
+      const forB = cap(o, "architect", other.task_id, "a");
+      expect(getTask(db, other.task_id).cap_epoch).toBe(getTask(db, task.task_id).cap_epoch); // the epoch would match: only the task id can refuse it
+      expect(() => transitionTask(db, dir, task.task_id, "CONTEXT_READY", { capability: forB }, { now: at(1) })).toThrow(/not for this task/);
+      expect(getTask(db, task.task_id)).toMatchObject({ state: "CREATED", revision: 1 });
+      expect(transitionTask(db, dir, other.task_id, "CONTEXT_READY", { capability: forB }, { now: at(1) }).state).toBe("CONTEXT_READY"); // control: the same token is good on B
       expect(() => transitionTask(db, dir, task.task_id, "CANCELLED", { operator: ADMIN }, { now: at(1) })).toThrow(/use `cancel`/); // cancellation has one path: it revokes authority and stops children
       expect(Object.keys(LEGAL).sort()).toEqual([...STATES].sort());
       const done = cancelTask(db, dir, task.task_id, APPROVER, "not needed", at(2));
@@ -284,8 +294,19 @@ describe("S3A evidence integrity", () => {
       db.exec("DROP TRIGGER sentinel_events_append_only_d");
       db.prepare("DELETE FROM sentinel_task_events WHERE seq = (SELECT MAX(seq) FROM sentinel_task_events WHERE task_id = ?)").run(id);
       expect(verifyTaskChain(db, dir, id).ok).toBe(false);
-      // an execution authorization cannot be revived or its expiry edited
-      expect(() => db.prepare("UPDATE sentinel_exec_auth SET expires_at = '2099-01-01'").run()).not.toThrow(); // no rows yet: nothing to edit
+      // an execution authorization cannot be extended, topped up or revived behind the API: the trigger refuses each edit
+      const t2 = newTask(o, "A1");
+      driveToImplementing(o, t2.task_id, fp("v1"), 30);
+      const auth = authorizeExecution(db, dir, t2.task_id, APPROVER, fp("v1"), { now: at(40), maxRuns: 2 });
+      const row = () => db.prepare("SELECT expires_at, runs_left, status, mac FROM sentinel_exec_auth WHERE auth_id = ?").get(auth);
+      const issued = row();
+      expect(() => db.prepare("UPDATE sentinel_exec_auth SET expires_at = '2099-01-01T00:00:00.000Z' WHERE auth_id = ?").run(auth)).toThrow(/can only be used up or revoked/); // extend while active
+      expect(() => db.prepare("UPDATE sentinel_exec_auth SET runs_left = 9 WHERE auth_id = ?").run(auth)).toThrow(/can only be used up or revoked/); // top up
+      revokeExecution(db, dir, t2.task_id, APPROVER);
+      expect(() => db.prepare("UPDATE sentinel_exec_auth SET status = 'active' WHERE auth_id = ?").run(auth)).toThrow(/can only be used up or revoked/); // revive
+      expect(() => db.prepare("DELETE FROM sentinel_exec_auth WHERE auth_id = ?").run(auth)).toThrow(/never deleted/);
+      expect(row()).toMatchObject({ expires_at: (issued as { expires_at: string }).expires_at, runs_left: 2, status: "revoked" });
+      expect(executionPermitted(db, dir, t2.task_id, fp("v1"), FAKE_OK, at(41)).reasons).toContain("no active execution authorization");
     });
   });
 });
@@ -355,7 +376,10 @@ describe("S3A authorization goes stale", () => {
       db.prepare("UPDATE sentinel_exec_auth SET runs_left = 0 WHERE task_id = ?").run(id); // using it up is allowed (it only ever decreases)...
       expect(() => db.prepare("UPDATE sentinel_exec_auth SET expires_at = '2099-01-01T00:00:00.000Z' WHERE task_id = ?").run(id)).toThrow(/used up or revoked/);
       expect(() => db.prepare("UPDATE sentinel_exec_auth SET runs_left = 5 WHERE task_id = ?").run(id)).toThrow(/used up or revoked/);
-      expect(executionPermitted(db, dir, id, fp("v1"), FAKE_OK, at(11)).reasons.join(" ")).toMatch(/integrity|used up/); // ...but then the MAC no longer matches
+      const tampered = executionPermitted(db, dir, id, fp("v1"), FAKE_OK, at(11)); // ...but a raw edit, even a permitted one, breaks the MAC: the integrity path, not the used-up path
+      expect(tampered.permitted).toBe(false);
+      expect(tampered.reasons).toContain("the execution authorization failed its integrity check");
+      expect(tampered.reasons.join(" ")).not.toMatch(/used up/);
       // BLOCKED then re-planned: the old authorization does not come back
       const t2 = newTask(o, "A1");
       driveToImplementing(o, t2.task_id, fp("v1"), 100);
@@ -390,11 +414,11 @@ describe("S3A execution interface", () => {
       // a caller cannot vouch for the sandbox: the backend is probed inside the worker, so a backend that does not verify is refused whatever the caller believes
       await expect(runSyntheticWorker(db, dir, id, { leaseToken: lease, program: "ok", backend: { ...noSandbox, wrap: passthrough.wrap }, fingerprint: () => fp("v1"), timeoutMs: 5000 })).rejects.toThrow(/no verified sandbox/);
     });
-    expect((await runCli(w.repo, ["index", "--json"], w.home)).code).toBe(0); // indexing is unaffected
-    expect((await runCli(w.repo, ["status", "--json"], w.home)).code).toBe(0);
+    expect((await runCli(w.repo, ["index", "--json"], w.home, NO_OPERATOR)).code).toBe(0); // indexing is unaffected
+    expect((await runCli(w.repo, ["status", "--json"], w.home, NO_OPERATOR)).code).toBe(0);
   });
 
-  it("runs only the fixed synthetic programs, one authorized run each, enforces timeouts, stops on cancellation (also from another connection) and on a moving tree; the real macOS sandbox, when it self-tests, denies writes", async () => {
+  it("runs only the fixed synthetic programs, one authorized run each, enforces timeouts, stops on cancellation (also from another connection) and on a moving tree", async () => {
     const w = await setup();
     await withStore(w.repo, w.home, async (o) => {
       const { db, dir } = o.store;
@@ -416,7 +440,7 @@ describe("S3A execution interface", () => {
       expect((await running).outcome).toBe("cancelled");
       expect(dequeueWork(db)).toBeNull();
       expect(() => enqueueWork(db, id, "more")).toThrow(/finished/);
-      await expect(runSyntheticWorker(db, dir, id, { ...base, program: "ok", timeoutMs: 1000 })).rejects.toThrow();
+      await expect(runSyntheticWorker(db, dir, id, { ...base, program: "ok", timeoutMs: 1000 })).rejects.toThrow(/only the controller holding the task's lease may execute/); // cancellation cleared the lease
     });
     await withStore(w.repo, w.home, async (o) => {
       const { db, dir } = o.store;
@@ -428,20 +452,20 @@ describe("S3A execution interface", () => {
       expect((await runSyntheticWorker(db, dir, t.task_id, { ...used, program: "ok" })).outcome).toBe("passed");
       await expect(runSyntheticWorker(db, dir, t.task_id, { ...used, program: "ok" })).rejects.toThrow(/used up/); // single use
     });
-    const real = await probeCapabilities([macosSandboxExec]);
-    if (!real.result.verified) {
-      console.warn(`real sandbox not verified on this machine: ${real.result.detail}`);
-      return;
-    }
+  });
+
+  it.skipIf(!REAL_SANDBOX.result.verified)(`the real macOS sandbox, when it self-tests, denies writes (exit 7 from write_attempt) [sandbox probe: ${REAL_SANDBOX.result.detail}]`, async () => {
+    const w = await setup();
     await withStore(w.repo, w.home, async (o) => {
       const { db, dir } = o.store;
       const t = newTask(o, "A1");
       driveToImplementing(o, t.task_id, fp("v1"));
       const lease = claimTask(db, t.task_id, "ctl", 3600).leaseToken;
       authorizeExecution(db, dir, t.task_id, APPROVER, fp("v1"), { now: new Date(), maxRuns: 2 });
-      const common = { leaseToken: lease, backend: real.backend, fingerprint: () => fp("v1"), timeoutMs: 15_000 };
-      expect((await runSyntheticWorker(db, dir, t.task_id, { ...common, program: "ok" })).outcome).toBe("passed");
-      expect((await runSyntheticWorker(db, dir, t.task_id, { ...common, program: "write_attempt" })).outcome).toBe("failed"); // the write was denied
+      const common = { leaseToken: lease, backend: REAL_SANDBOX.backend, fingerprint: () => fp("v1"), timeoutMs: 15_000 };
+      expect(REAL_SANDBOX.backend.name).toBe("macos-sandbox-exec");
+      expect(await runSyntheticWorker(db, dir, t.task_id, { ...common, program: "ok" })).toMatchObject({ outcome: "passed", exitCode: 0, stdout: "synthetic-ok" });
+      expect(await runSyntheticWorker(db, dir, t.task_id, { ...common, program: "write_attempt" })).toMatchObject({ outcome: "failed", exitCode: 7 }); // 7 = the program caught the denied write (not a crash or a signal)
     });
   });
 });
@@ -459,7 +483,7 @@ describe("S3A atomicity and concurrency", () => {
       transitionTask(db, dir, id, "CONTEXT_READY", { capability: cap(o, "architect", id, "arch") }, { now: at(2), leaseToken: a, expectedRevision: 1 });
       expect(() => transitionTask(db, dir, id, "SPECIFICATION_READY", { capability: cap(o, "architect", id, "arch") }, { now: at(3), leaseToken: a, expectedRevision: 1 })).toThrow(/moved on/);
       const before = db.prepare("SELECT COUNT(*) AS n FROM sentinel_task_events").get() as { n: number };
-      expect(() => transitionTask(db, dir, id, "IMPLEMENTING", { capability: cap(o, "builder", id, "b") }, { now: at(4), leaseToken: a })).toThrow();
+      expect(() => transitionTask(db, dir, id, "IMPLEMENTING", { capability: cap(o, "builder", id, "b") }, { now: at(4), leaseToken: a })).toThrow(/illegal transition CONTEXT_READY -> IMPLEMENTING/);
       expect(db.prepare("SELECT COUNT(*) AS n FROM sentinel_task_events").get()).toEqual(before);
       expect(getTask(db, id).revision).toBe(2);
     });
@@ -469,27 +493,31 @@ describe("S3A atomicity and concurrency", () => {
 describe("S3A command line", () => {
   it("plan (dry run) writes no source and no task; list/status/report/cancel work with an authenticated operator; check-scope needs a capability", async () => {
     const w = await setup();
-    const boot = await runCli(w.repo, ["memory", "operator", "add", "root", "--roles", "propose,approve,verify,admin", "--yes", "--json"], w.home);
+    const boot = await runCli(w.repo, ["memory", "operator", "add", "root", "--roles", "propose,approve,verify,admin", "--yes", "--json"], w.home, NO_OPERATOR);
     const env = { ENGBRAIN_OPERATOR: "root", ENGBRAIN_OPERATOR_TOKEN: (JSON.parse(boot.stdout) as { token: string }).token };
-    await runCli(w.repo, ["index"], w.home);
+    await runCli(w.repo, ["index"], w.home, NO_OPERATOR);
     const dry = await runCli(w.repo, ["sentinel", "plan", "--title", "Add retries", "--scope", "src/app.ts", "--profile", "A2", "--dry-run", "--json"], w.home, env);
     expect(dry.code).toBe(0);
     expect(JSON.parse(dry.stdout)).toMatchObject({ dryRun: true, requiredChecks: expect.arrayContaining(["scope", "tests", "lint", "typecheck", "dependency_review"]) });
-    expect(JSON.parse((await runCli(w.repo, ["sentinel", "list", "--json"], w.home)).stdout).tasks).toEqual([]);
-    expect((await runCli(w.repo, ["sentinel", "plan", "--title", "Add retries", "--scope", "src/app.ts", "--profile", "A2"], w.home)).code).toBe(3); // unauthenticated
+    expect(JSON.parse((await runCli(w.repo, ["sentinel", "list", "--json"], w.home, NO_OPERATOR)).stdout).tasks).toEqual([]);
+    const unauthenticated = await runCli(w.repo, ["sentinel", "plan", "--title", "Add retries", "--scope", "src/app.ts", "--profile", "A2"], w.home, NO_OPERATOR);
+    expect(unauthenticated.code).toBe(3);
+    expect(unauthenticated.stderr).toMatch(/authenticated operator/);
     const made = await runCli(w.repo, ["sentinel", "plan", "--title", "Add retries", "--scope", "src/app.ts", "--profile", "A2", "--json"], w.home, env);
     expect(made.code).toBe(0);
     const id = (JSON.parse(made.stdout) as { id: string }).id;
-    const status = JSON.parse((await runCli(w.repo, ["sentinel", "status", id, "--json"], w.home)).stdout) as { report: { task: { state: string }; chain: { ok: boolean } } };
+    const status = JSON.parse((await runCli(w.repo, ["sentinel", "status", id, "--json"], w.home, NO_OPERATOR)).stdout) as { report: { task: { state: string }; chain: { ok: boolean } } };
     expect([status.report.task.state, status.report.chain.ok]).toEqual(["CREATED", true]);
-    expect((await runCli(w.repo, ["sentinel", "report", id], w.home)).stdout).toMatch(/ELIGIBLE_FOR_APPROVAL grants no permission/);
+    expect((await runCli(w.repo, ["sentinel", "report", id], w.home, NO_OPERATOR)).stdout).toMatch(/ELIGIBLE_FOR_APPROVAL grants no permission/);
     expect((await runCli(w.repo, ["sentinel", "check-scope", id], w.home, env)).code).toBe(2); // no capability supplied
     const issued = JSON.parse((await runCli(w.repo, ["sentinel", "capability", "issue", id, "--role", "verification_worker", "--principal", "ci-1", "--json"], w.home, env)).stdout) as { token: string };
     expect(issued.token).toContain(".");
-    expect((await runCli(w.repo, ["sentinel", "cancel", id, "--reason", "test"], w.home)).code).toBe(3);
+    const anonymousCancel = await runCli(w.repo, ["sentinel", "cancel", id, "--reason", "test"], w.home, NO_OPERATOR);
+    expect(anonymousCancel.code).toBe(3);
+    expect(anonymousCancel.stderr).toMatch(/authenticated operator/);
     writeFileSync(join(w.repo, "src-drift.txt"), "the tree drifted after the last index"); // a stale index must not block an emergency cancel
     expect((await runCli(w.repo, ["sentinel", "cancel", id, "--reason", "test"], w.home, env)).code).toBe(0);
-    expect(JSON.parse((await runCli(w.repo, ["sentinel", "status", id, "--json"], w.home)).stdout).report.task.state).toBe("CANCELLED");
+    expect(JSON.parse((await runCli(w.repo, ["sentinel", "status", id, "--json"], w.home, NO_OPERATOR)).stdout).report.task.state).toBe("CANCELLED");
     expect((await runCli(w.repo, ["sentinel", "plan", "--title", "Another", "--scope", "src/app.ts"], w.home, env)).code).toBe(3); // drifted tree: planning refuses a non-verified index
   });
 });

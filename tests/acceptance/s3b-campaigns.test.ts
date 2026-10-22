@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   addTraceLink, addVerifier, rejectEvidence, setEnvironment, checkStanding, appendEvidence, assureTask, claimTask, createTask, dequeueWork, enqueueWork, evaluateEligibility, getTask, importEvidence, invalidateEvidence, issueCapability, outcomeOfCounts, parseEvidence,
-  planCampaigns, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, repositoryFingerprint, resumeInfo, signArtifact, traceabilityReport, transitionTask, type Actor, type Role
+  planCampaigns, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, repositoryFingerprint, resumeInfo, showEvidence, signArtifact, traceabilityReport, transitionTask, type Actor, type Role
 } from "@engbrain/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { cleanupTempDirs, engbrainHome, makeGitRepo, runCli } from "../helpers/env.js";
@@ -17,6 +17,22 @@ const APPROVER: Actor = { id: "carol", roles: ["propose", "approve"] };
 const CI: Actor = { id: "ci-bot", roles: ["propose"] };
 const sha = (b: Buffer): string => createHash("sha256").update(b).digest("hex");
 const ENV = { node: "22" };
+/** Unauthenticated CLI calls pass these explicitly, so a developer's own ENGBRAIN_OPERATOR in the shell cannot change the outcome. */
+const NO_OPERATOR = { ENGBRAIN_OPERATOR: "", ENGBRAIN_OPERATOR_TOKEN: "" };
+const T0 = new Date("2026-05-01T10:00:00.000Z");
+/** The exact refusal message, or "" when nothing was thrown. */
+const refusalOf = (fn: () => unknown): string => {
+  try {
+    fn();
+  } catch (e) {
+    return (e as Error).message;
+  }
+  return "";
+};
+/** A run of an older revision (clean tree): refused by the revision binding. */
+const STALE_IMPORT_REFUSAL = "the run was not made on the code this task is bound to (a different revision, or the tree has uncommitted changes): it cannot approve this artifact";
+/** A run of the CURRENT commit while the tree has uncommitted changes: the import's own standing goes stale first. */
+const DIRTY_TREE_REFUSAL = "this import no longer applies (stale): the working tree has uncommitted changes that this run did not see";
 
 const JUNIT_OK = (extra = ""): Buffer => Buffer.from(`<testsuite name="api" tests="${2 + (extra === "" ? 0 : 1)}"><testcase name="returns a user" file="src/api.test.ts"/><testcase name="handles empty id" file="src/api.test.ts"/>${extra}</testsuite>`);
 
@@ -152,6 +168,7 @@ describe("S3B campaigns", () => {
 describe("S3B trust and binding", () => {
   it("a quarantined, forged or wrong-revision artifact cannot back a check; code modified after the run cannot approve a changed artifact", async () => {
     const w = await world();
+    let oldImport = "";
     await withStore(w.repo, w.home, (o) => {
       const { db, dir } = o.store;
       const fp = repositoryFingerprint(db);
@@ -174,19 +191,33 @@ describe("S3B trust and binding", () => {
       // (covered in H4); a valid import of the CURRENT code backs the check
       const good = signedImport(o, JUNIT_OK(), "good.xml");
       expect(recordFromImport(db, dir, t.task_id, "tests", good, { capability: worker }, fp).outcome).toBe("passed");
+      oldImport = good;
       void sha;
     });
-    // the code changes after the run: the evidence no longer stands and a run of the OLD revision cannot back a check of the NEW code
-    let oldImport = "";
-    await withStore(w.repo, w.home, (o) => { oldImport = (o.store.db.prepare("SELECT import_id AS id FROM evidence_imports WHERE trust = 'signed' LIMIT 1").get() as { id: string }).id; });
+    // STALE IMPORT: the code is committed again after the run, so a run of the OLD revision cannot back a check of the NEW code
     writeFileSync(join(w.repo, "src/api.ts"), "export const a = 2;\n");
     commitAll(w.repo, "change after the run");
     await refresh(w.repo, w.home, { history: "backfill" });
     await withStore(w.repo, w.home, (o) => {
       const { db, dir } = o.store;
+      const head = (db.prepare("SELECT processed_oid AS oid, overlay_hash AS o FROM history_checkpoints WHERE ref_key = 'HEAD'").get() as { oid: string; o: string | null });
+      expect([showEvidence(db, oldImport)!.sourceRevision, head.oid === w.c1, head.o]).toEqual([w.c1, false, null]); // precondition: an old revision, a CLEAN tree
       const t2 = newTask(o);
       toVerifying(o, t2.task_id);
-      expect(() => recordFromImport(db, dir, t2.task_id, "tests", oldImport, { capability: cap(o, "verification_worker", t2.task_id, "verifier-1") }, repositoryFingerprint(db))).toThrow(/not made on the code|no longer applies/);
+      expect(refusalOf(() => recordFromImport(db, dir, t2.task_id, "tests", oldImport, { capability: cap(o, "verification_worker", t2.task_id, "verifier-1") }, repositoryFingerprint(db)))).toBe(STALE_IMPORT_REFUSAL);
+    });
+    // DIRTY TREE: a run signed for the CURRENT commit cannot approve a working tree that has uncommitted changes on top of it
+    writeFileSync(join(w.repo, "src/api.ts"), "export const a = 3;\n");
+    await refresh(w.repo, w.home, { history: "backfill" });
+    await withStore(w.repo, w.home, (o) => {
+      const { db, dir } = o.store;
+      const head = (db.prepare("SELECT processed_oid AS oid, overlay_hash AS o FROM history_checkpoints WHERE ref_key = 'HEAD'").get() as { oid: string; o: string | null });
+      expect(head.o).not.toBeNull(); // precondition: the tree really is dirty
+      const t3 = newTask(o);
+      toVerifying(o, t3.task_id);
+      const current = signedImport(o, JUNIT_OK(`<testcase name="dirty" file="src/api.test.ts"/>`), "dirty.xml");
+      expect(showEvidence(db, current)!.sourceRevision).toBe(head.oid); // the run IS for the current commit: only the uncommitted changes can refuse it
+      expect(refusalOf(() => recordFromImport(db, dir, t3.task_id, "tests", current, { capability: cap(o, "verification_worker", t3.task_id, "verifier-1") }, repositoryFingerprint(db)))).toBe(DIRTY_TREE_REFUSAL);
     });
   });
 });
@@ -202,13 +233,13 @@ describe("S3B adapters", () => {
     const n = parseEvidence("playwright", pw);
     expect(n.results.map((r) => r.outcome)).toEqual(["passed", "failed", "timed_out", "error"]);
     expect(n.partial).toBe(true);
-    expect(() => parseEvidence("playwright", "{not json")).toThrow();
+    expect(() => parseEvidence("playwright", "{not json")).toThrow(/^not valid JSON$/);
     expect(() => parseEvidence("playwright", JSON.stringify({ nope: 1 }))).toThrow(/Playwright/);
     const vt = parseEvidence("vitest", JSON.stringify({ numFailedTestSuites: 0, testResults: [{ name: "src/a.test.ts", status: "passed", assertionResults: [{ title: "x", status: "passed" }] }] }));
     expect([vt.format, vt.results[0]!.outcome]).toEqual(["vitest", "passed"]);
     const py = parseEvidence("pytest", `<testsuites><testsuite name="pytest" tests="1"><testcase classname="tests.test_a" name="test_x" file="tests/test_a.py"/></testsuite></testsuites>`);
     expect([py.format, py.results[0]!.file]).toEqual(["pytest", "tests/test_a.py"]);
-    expect(() => parseEvidence("pytest", "<!DOCTYPE x [<!ENTITY a \"b\">]><testsuite/>")).toThrow();
+    expect(() => parseEvidence("pytest", "<!DOCTYPE x [<!ENTITY a \"b\">]><testsuite/>")).toThrow(/DOCTYPE or ENTITY declaration is refused/);
   });
 });
 
@@ -240,9 +271,8 @@ describe("S3B traceability, selection and run enforcement", () => {
     await refresh(w.repo, w.home, { history: "backfill" });
     await withStore(w.repo, w.home, async (o) => {
       const { db, dir } = o.store;
-      // the task is bound to the FIRST commit, so the change above is "since the base"
-      const first = (db.prepare("SELECT commit_oid AS oid FROM git_commits ORDER BY author_time LIMIT 1").get() as { oid: string }).oid;
-      const t = createTask(db, dir, { title: "t", requester: CI, profile: "A3", scope: ["src/"], sourceFingerprint: repositoryFingerprint(db), baseRevision: first });
+      // the task is bound to the FIRST commit (captured when the fixture committed it), so the change above is "since the base"
+      const t = createTask(db, dir, { title: "t", requester: CI, profile: "A3", scope: ["src/"], sourceFingerprint: repositoryFingerprint(db), baseRevision: w.c1 });
       const sandbox = (await probeCapabilities()).result;
       const plan = planVerification(db, dir, t.task_id, repositoryFingerprint(db), sandbox);
       const selected = plan.selection!.selected.map((s) => s.path);
@@ -256,22 +286,24 @@ describe("S3B traceability, selection and run enforcement", () => {
 
   it("running repository tests fails closed without full OS enforcement; the dry run, explain and import paths stay available", async () => {
     const w = await world();
-    const boot = await runCli(w.repo, ["memory", "operator", "add", "root", "--roles", "propose,approve,verify,admin", "--yes", "--json"], w.home);
+    const boot = await runCli(w.repo, ["memory", "operator", "add", "root", "--roles", "propose,approve,verify,admin", "--yes", "--json"], w.home, NO_OPERATOR);
     const env = { ENGBRAIN_OPERATOR: "root", ENGBRAIN_OPERATOR_TOKEN: (JSON.parse(boot.stdout) as { token: string }).token };
-    await runCli(w.repo, ["refresh", "--history=backfill"], w.home);
+    await runCli(w.repo, ["refresh", "--history=backfill"], w.home, NO_OPERATOR);
     const sandbox = (await probeCapabilities()).result;
     expect(() => refuseRunIfUnenforceable(sandbox)).toThrow(/network egress denial|CPU, memory/);
     expect(() => refuseRunIfUnenforceable({ verified: false, detail: "none", checks: [] })).toThrow(/file-write confinement/);
     const made = JSON.parse((await runCli(w.repo, ["sentinel", "plan", "--title", "Verify api", "--scope", "src/", "--profile", "A2", "--json"], w.home, env)).stdout) as { id: string };
-    const dry = await runCli(w.repo, ["sentinel", "verify", made.id, "--dry-run", "--json"], w.home);
+    const dry = await runCli(w.repo, ["sentinel", "verify", made.id, "--dry-run", "--json"], w.home, NO_OPERATOR);
     expect(dry.code).toBe(0);
     expect(dry.stdout).toMatch(/"permitted": false/);
-    expect((await runCli(w.repo, ["sentinel", "verify", made.id, "--explain"], w.home)).stdout).toMatch(/no repository code was run/);
+    expect((await runCli(w.repo, ["sentinel", "verify", made.id, "--explain"], w.home, NO_OPERATOR)).stdout).toMatch(/no repository code was run/);
     const run = await runCli(w.repo, ["sentinel", "verify", made.id, "--run"], w.home, env);
     expect(run.code).toBe(3); // refused
     expect(run.stderr).toMatch(/cannot enforce/);
-    expect((await runCli(w.repo, ["sentinel", "verify", made.id, "--run"], w.home)).code).toBe(3); // and an unauthenticated caller is refused first
-    expect((await runCli(w.repo, ["sentinel", "trace", made.id], w.home)).code).toBe(0);
+    const anonymous = await runCli(w.repo, ["sentinel", "verify", made.id, "--run"], w.home, NO_OPERATOR);
+    expect(anonymous.code).toBe(3); // and an unauthenticated caller is refused first
+    expect(anonymous.stderr).toMatch(/authenticated operator/);
+    expect((await runCli(w.repo, ["sentinel", "trace", made.id], w.home, NO_OPERATOR)).code).toBe(0);
   });
 });
 
@@ -283,15 +315,16 @@ describe("S3B parallel and interrupted verification", () => {
       id = newTask(o).task_id;
       enqueueWork(o.store.db, id, "campaign:FUNCTIONAL");
       enqueueWork(o.store.db, id, "campaign:ADVERSARIAL");
-      claimTask(o.store.db, id, "worker-a", 1);
+      claimTask(o.store.db, id, "worker-a", 60, T0);
     });
     const taken: number[] = [];
     await Promise.all([0, 1].map(() => withStore(w.repo, w.home, (o) => { const item = dequeueWork(o.store.db); if (item !== null) { taken.push(item.itemId); } })));
     expect(new Set(taken).size).toBe(2); // each got a distinct item; none twice
-    await withStore(w.repo, w.home, async (o) => {
+    await withStore(w.repo, w.home, (o) => {
       expect(dequeueWork(o.store.db)).toBeNull();
-      await new Promise((r) => setTimeout(r, 1500)); // worker-a died: its one-second lease expires
-      expect(resumeInfo(o.store.db, id).requeued).toBe(2);
+      // time is injected, not slept: the outcome cannot depend on how loaded the machine is
+      expect(resumeInfo(o.store.db, id, new Date(T0.getTime() + 59_000)).requeued).toBe(0); // the lease is still held: its work is not stolen
+      expect(resumeInfo(o.store.db, id, new Date(T0.getTime() + 61_000)).requeued).toBe(2); // worker-a died: its 60 s lease has expired
       expect(dequeueWork(o.store.db)).not.toBeNull(); // the work is not lost
       expect(() => assureTask(o.store.db, o.store.dir, id, cap(o, "assurance_controller", id, "assurance-1"), repositoryFingerprint(o.store.db))).toThrow(/ASSURANCE_REVIEW/); // and nothing is approved by recovery
     });
@@ -362,8 +395,7 @@ describe("S3B independent-review regressions", () => {
     await refresh(w.repo, w.home, { history: "backfill" });
     await withStore(w.repo, w.home, (o) => {
       const { db, dir } = o.store;
-      const first = (db.prepare("SELECT commit_oid AS oid FROM git_commits ORDER BY author_time LIMIT 1").get() as { oid: string }).oid;
-      const t = createTask(db, dir, { title: "t", requester: CI, profile: "A1", scope: ["src/"], sourceFingerprint: repositoryFingerprint(db), baseRevision: first });
+      const t = createTask(db, dir, { title: "t", requester: CI, profile: "A1", scope: ["src/"], sourceFingerprint: repositoryFingerprint(db), baseRevision: w.c1 });
       toVerifying(o, t.task_id);
       const onlyLazy = Buffer.from(`<testsuite name="s" tests="1"><testcase name="loads api at runtime" file="src/lazy.test.ts"/></testsuite>`);
       const verdict = recordFromImport(db, dir, t.task_id, "tests", signedImport(o, onlyLazy, "lazy.xml"), { capability: cap(o, "verification_worker", t.task_id, "verifier-1") }, repositoryFingerprint(db));

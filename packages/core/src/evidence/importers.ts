@@ -1,10 +1,12 @@
 import { EngbrainError } from "../errors.js";
 import { scanForSecrets } from "../secretScan.js";
+import { parseAssurance } from "./assuranceParsers.js";
+import type { AssuranceDetail } from "./assuranceTypes.js";
 import { parseXml, walk, type XmlNode } from "./xml.js";
 
 /** `vitest` reads the jest-compatible JSON reporter, `pytest` reads `--junitxml` output, `playwright` reads the JSON reporter. */
-export type EvidenceFormat = "junit" | "lcov" | "cobertura" | "sarif" | "jest" | "vitest" | "playwright" | "pytest";
-export const EVIDENCE_FORMATS: readonly EvidenceFormat[] = ["junit", "lcov", "cobertura", "sarif", "jest", "vitest", "playwright", "pytest"];
+export type EvidenceFormat = "junit" | "lcov" | "cobertura" | "sarif" | "jest" | "vitest" | "playwright" | "pytest" | "stryker" | "fastcheck" | "hypothesis" | "semgrep_json" | "tla" | "z3" | "race_log";
+export const EVIDENCE_FORMATS: readonly EvidenceFormat[] = ["junit", "lcov", "cobertura", "sarif", "jest", "vitest", "playwright", "pytest", "stryker", "fastcheck", "hypothesis", "semgrep_json", "tla", "z3", "race_log"];
 export type Outcome = "passed" | "failed" | "skipped" | "timed_out" | "error";
 
 export interface NormalizedResult { suite: string | null; name: string; file: string | null; outcome: Outcome; durationMs: number | null; message: string | null }
@@ -18,6 +20,8 @@ export interface NormalizedEvidence {
   /** The artifact itself declared more than what could be read, or a count did not add up: results are INCOMPLETE and must not be read as the whole run. */
   partial: boolean;
   warnings: string[];
+  /** Present for adversarial-assurance formats only. */
+  assurance?: AssuranceDetail;
 }
 
 export const IMPORT_LIMITS = { results: 200_000, coverageFiles: 100_000, findings: 100_000, message: 300, name: 300, hitLines: 5000 } as const;
@@ -294,6 +298,7 @@ function parseByFormat(format: EvidenceFormat, text: string): NormalizedEvidence
     case "vitest": return { ...parseJest(text), format: "vitest" };
     case "pytest": return { ...parseJUnit(text), format: "pytest" };
     case "playwright": return parsePlaywright(text);
+    case "stryker": case "fastcheck": case "hypothesis": case "semgrep_json": case "tla": case "z3": case "race_log": return parseAssurance(format, text, activeRoot);
   }
 }
 

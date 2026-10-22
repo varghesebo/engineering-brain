@@ -40,7 +40,11 @@ function keyOf(storeDir: string, create: boolean): Buffer {
   } catch {
     // not supported everywhere
   }
-  return Buffer.from(readFileSync(path, "utf8").trim(), "hex");
+  const hex = readFileSync(path, "utf8").trim();
+  if (!/^[0-9a-f]{64}$/.test(hex)) {
+    throw new EngbrainError("STORE_UNSAFE_PATH", "the controller key is not 64 hexadecimal characters");
+  }
+  return Buffer.from(hex, "hex");
 }
 
 export const controllerKey = (storeDir: string, create = false): Buffer => keyOf(storeDir, create);

@@ -109,7 +109,7 @@ describe("S3C authorized worktrees: unauthorized, protected and concurrent chang
       // the builder cannot close it; neither can a plain operator; a person who is not the builder can
       expect(() => resolveFinding(db, id, open[0]!.finding_id, "rejected", { id: "builder-1", roles: ["approve"] }, "it is fine")).toThrow(/builder cannot/);
       expect(() => resolveFinding(db, id, open[0]!.finding_id, "rejected", REQUESTER, "it is fine")).toThrow(/approve role/);
-      expect(() => resolveFinding(db, id, open[0]!.finding_id, "fixed", APPROVER, "restored")).toThrow(/NEW passing machine evidence/);
+      expect(() => resolveFinding(db, id, open[0]!.finding_id, "fixed", APPROVER, "restored")).toThrow(/protected files are still changed/);
       // mandatory checks cannot be dropped by policy either
       expect(() => updatePolicy(store, REQUESTER, { extraChecks: { A1: ["x_check"] } })).toThrow(/admin/);
       expect(() => updatePolicy(store, ADMIN, { minApprovals: { A1: 0 } })).toThrow(/only be raised/);
@@ -153,8 +153,8 @@ describe("S3C findings: fabricated evidence is refused, genuine findings drive a
       const finding = (evidence: Parameters<typeof addFinding>[3]["evidence"], cap2 = reviewer) => addFinding(db, store, id, { severity: "blocking", title: "login accepts empty passwords", evidence, reproduction: "call login('') and observe true" }, cap2, FP, hashOf);
       // fabricated: a made-up evidence number, a wrong file hash, a missing file, a check that currently passes
       expect(() => finding({ kind: "evidence", seq: 9999 })).toThrow(/does not exist/);
-      expect(() => finding({ kind: "file", path: "src/app.ts", sha256: "0".repeat(64) })).toThrow(/does not match/);
-      expect(() => finding({ kind: "file", path: "src/ghost.ts", sha256: sha("x") })).toThrow(/does not exist or its content hash/);
+      expect(() => finding({ kind: "file", path: "src/app.ts", sha256: "0".repeat(64), line: 1 })).toThrow(/does not match/);
+      expect(() => finding({ kind: "file", path: "src/ghost.ts", sha256: sha("x"), line: 1 })).toThrow(/does not exist or its content hash/);
       appendEvidence(db, store, id, { origin: "machine", kind: "check_result", checkId: "lint", outcome: "passed" }, { capability: worker }, FP);
       expect(() => finding({ kind: "check", checkId: "lint" })).toThrow(/currently passes/);
       expect(() => finding({ kind: "evidence", seq: 1 })).toThrow(/PASSED/);
@@ -168,8 +168,8 @@ describe("S3C findings: fabricated evidence is refused, genuine findings drive a
       expect(evaluateEligibility(db, store, id, FP).blockers.join(" ")).toMatch(/open blocking review finding/);
       // the repair loop: reviewer reports, builder repairs, verification re-runs
       transitionTask(db, store, id, "FINDINGS_REPORTED", { capability: reviewer });
-      startRepair(db, id, { maxIterations: 3 });
-      const it1 = recordIteration(db, store, id, { iterationKey: "repair-1", tokens: 1000, costMicro: 100, elapsedMs: 5000, failureSignature: "tests:login" }, undefined);
+      startRepair(db, id, APPROVER, { maxIterations: 3 });
+      const it1 = recordIteration(db, store, id, { capability: cap(o, "builder", id, "builder-1") }, { iterationKey: "repair-1", tokens: 1000, costMicro: 100, elapsedMs: 5000, failureSignature: "tests:login" }, undefined);
       expect(it1).toMatchObject({ allowed: true, backoffMs: 1000 });
       transitionTask(db, store, id, "REPAIRING", { capability: cap(o, "builder", id, "builder-1") });
       transitionTask(db, store, id, "REVERIFYING", { capability: cap(o, "verification_worker", id, "verifier-1") });
@@ -211,10 +211,12 @@ describe("S3C bounded repair, cancellation and resumable handoffs", () => {
       const { db, dir: store } = o.store;
       const a = newTask(o);
       drive(o, a.task_id, "VERIFYING");
-      startRepair(db, a.task_id, { maxIterations: 2, maxSameFailure: 5 });
-      const step = (n: number) => recordIteration(db, store, a.task_id, { iterationKey: `k${n}`, tokens: 10, costMicro: 1, elapsedMs: 10, failureSignature: `f${n}` });
+      const t0 = Date.now();
+      const at = (n: number): Date => new Date(t0 + n * 120_000); // each iteration after the previous backoff
+      startRepair(db, a.task_id, APPROVER, { maxIterations: 2, maxSameFailure: 5 }, at(0));
+      const step = (n: number) => recordIteration(db, store, a.task_id, { operator: APPROVER }, { iterationKey: `k${n}`, tokens: 10, costMicro: 1, elapsedMs: 10, failureSignature: `f${n}` }, at(n));
       expect(step(1)).toMatchObject({ allowed: true, backoffMs: 1000 });
-      expect(recordIteration(db, store, a.task_id, { iterationKey: "k1", tokens: 10, costMicro: 1, elapsedMs: 10, failureSignature: "f1" }).state.iterations).toBe(1); // replay after a crash: not charged
+      expect(recordIteration(db, store, a.task_id, { operator: APPROVER }, { iterationKey: "k1", tokens: 10, costMicro: 1, elapsedMs: 10, failureSignature: "f1" }, at(1)).state.iterations).toBe(1); // replay after a crash: not charged
       expect(step(2)).toMatchObject({ allowed: true, backoffMs: 2000 });
       const over = step(3);
       expect(over).toMatchObject({ allowed: false });
@@ -224,15 +226,15 @@ describe("S3C bounded repair, cancellation and resumable handoffs", () => {
       // the same failure again and again: escalation, long before the iteration limit
       const b = newTask(o);
       drive(o, b.task_id, "VERIFYING");
-      startRepair(db, b.task_id, { maxIterations: 50, maxSameFailure: 2 });
-      const same = (n: number) => recordIteration(db, store, b.task_id, { iterationKey: `s${n}`, tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests:login" });
+      startRepair(db, b.task_id, APPROVER, { maxIterations: 20, maxSameFailure: 2 }, at(0));
+      const same = (n: number) => recordIteration(db, store, b.task_id, { operator: APPROVER }, { iterationKey: `s${n}`, tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests:login" }, at(n));
       expect(same(1).allowed && same(2).allowed).toBe(true);
       expect(same(3).reason).toMatch(/same failure recurred 3 times: escalating to a person/);
       // token budget
       const c = newTask(o);
       drive(o, c.task_id, "VERIFYING");
-      startRepair(db, c.task_id, { maxTokens: 100 });
-      expect(recordIteration(db, store, c.task_id, { iterationKey: "t1", tokens: 500, costMicro: 0, elapsedMs: 1, failureSignature: "x" }).reason).toMatch(/token budget/);
+      startRepair(db, c.task_id, APPROVER, { maxTokens: 100 });
+      expect(recordIteration(db, store, c.task_id, { operator: APPROVER }, { iterationKey: "t1", tokens: 500, costMicro: 0, elapsedMs: 1, failureSignature: "x" }).reason).toMatch(/token budget/);
     });
   });
 
@@ -246,9 +248,9 @@ describe("S3C bounded repair, cancellation and resumable handoffs", () => {
       const reviewer = cap(o, "reviewer", id, "rev-1");
       appendEvidence(db, store, id, { origin: "machine", kind: "check_result", checkId: "tests", outcome: "failed" }, { capability: cap(o, "verification_worker", id, "verifier-1") }, FP);
       addFinding(db, store, id, { severity: "blocking", title: "tests fail on login", evidence: { kind: "check", checkId: "tests" }, reproduction: "run the suite and see login fail" }, reviewer, FP, () => null);
-      startRepair(db, id, { maxIterations: 1 });
-      recordIteration(db, store, id, { iterationKey: "a", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests" });
-      expect(recordIteration(db, store, id, { iterationKey: "b", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests" }).allowed).toBe(false); // budget exhausted: BLOCKED
+      startRepair(db, id, APPROVER, { maxIterations: 1 });
+      recordIteration(db, store, id, { operator: APPROVER }, { iterationKey: "a", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests" });
+      expect(recordIteration(db, store, id, { operator: APPROVER }, { iterationKey: "b", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "tests" }, new Date(Date.now() + 5000)).allowed).toBe(false); // budget exhausted: BLOCKED
       expect(getTask(db, id).state).toBe("BLOCKED");
       const handoff = createTaskHandoff(db, store, id, REQUESTER, FP);
       const resumed = resumeFromHandoff(db, store, handoff, id, FP);
@@ -263,9 +265,9 @@ describe("S3C bounded repair, cancellation and resumable handoffs", () => {
       // revocation and cancellation really stop further actions
       const c = newTask(o);
       drive(o, c.task_id, "VERIFYING");
-      startRepair(db, c.task_id);
+      startRepair(db, c.task_id, APPROVER);
       cancelTask(db, store, c.task_id, APPROVER, "stop");
-      expect(() => recordIteration(db, store, c.task_id, { iterationKey: "z", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "x" })).toThrow(/no further repair/);
+      expect(() => recordIteration(db, store, c.task_id, { operator: APPROVER }, { iterationKey: "z", tokens: 1, costMicro: 1, elapsedMs: 1, failureSignature: "x" })).toThrow(/no further repair/);
       expect(() => addFinding(db, store, c.task_id, { severity: "advisory", title: "late finding", evidence: { kind: "check", checkId: "tests" }, reproduction: "n/a (late)" }, cap(o, "reviewer", c.task_id, "rev-1"), FP, () => null)).toThrow(/finished/);
       expect(() => authorizeWorktree(db, c.task_id, APPROVER, worktree(), w.repo)).toThrow(/CANCELLED/);
     });

@@ -7,6 +7,7 @@ import { findSecretIn } from "../memory/records.js";
 import { macosSandboxExec, type SelfTestResult } from "./execution.js";
 import { appendEvidence, checkStanding, evaluateEligibility, getTask, type CheckStanding, type EvidenceOutcome, type Who } from "./tasks.js";
 import { requiredChecks } from "./policy.js";
+import { ASSURANCE_FORMATS, assuranceVerdict } from "./assurance/assuranceChecks.js";
 import type { Role } from "./capabilities.js";
 
 /**
@@ -19,21 +20,23 @@ export type PassClass = (typeof PASS_CLASSES)[number];
 
 const PASS_OF: Readonly<Record<string, PassClass>> = {
   scope: "FUNCTIONAL", build: "FUNCTIONAL", lint: "FUNCTIONAL", typecheck: "FUNCTIONAL", tests: "FUNCTIONAL", unit_tests: "FUNCTIONAL", integration_tests: "FUNCTIONAL", contract_tests: "FUNCTIONAL", e2e_tests: "FUNCTIONAL",
-  adversarial_review: "ADVERSARIAL", property_tests: "ADVERSARIAL", mutation_tests: "ADVERSARIAL", fuzz: "ADVERSARIAL", concurrency_tests: "ADVERSARIAL", failure_injection: "ADVERSARIAL",
+  adversarial_review: "ADVERSARIAL", property_tests: "ADVERSARIAL", mutation_tests: "ADVERSARIAL", fuzz: "ADVERSARIAL", concurrency_tests: "ADVERSARIAL", failure_injection: "ADVERSARIAL", auth_boundary_tests: "ADVERSARIAL",
   dependency_review: "SYSTEM_ASSURANCE", security_review: "SYSTEM_ASSURANCE", independent_review: "SYSTEM_ASSURANCE", reproducible_build: "SYSTEM_ASSURANCE", historical_regressions: "SYSTEM_ASSURANCE",
-  invariants_mapping: "SYSTEM_ASSURANCE", artifact_provenance: "SYSTEM_ASSURANCE", cross_service_contract: "SYSTEM_ASSURANCE"
+  invariants_mapping: "SYSTEM_ASSURANCE", artifact_provenance: "SYSTEM_ASSURANCE", cross_service_contract: "SYSTEM_ASSURANCE", formal_verification: "SYSTEM_ASSURANCE"
 };
 /** A check the policy adds that this table does not know is treated as FUNCTIONAL: it still has to pass, it just has no special pass class. */
 export const passOf = (check: string): PassClass => PASS_OF[check] ?? "FUNCTIONAL";
 
 /**
- * Which imported artifact formats may back which check. A test-result artifact backs a TEST check, a SARIF report backs lint/typecheck; everything else (scope, builds, reviews, dependency and
- * provenance checks) is never import-backed. One import can back only one check of a task, so a single unit-test run cannot satisfy several passes.
+ * Which imported artifact formats may back which check. A test-result artifact backs a TEST check, a SARIF report backs lint/typecheck; adversarial checks take only their own technique's
+ * artifact (a unit-test file is not a mutation, property, fuzz or race run); everything else (scope, builds, reviews including security_review, dependency and provenance checks) is never
+ * import-backed. One import can back only one check of a task, so a single unit-test run cannot satisfy several passes.
  */
 const TEST_FORMATS = ["junit", "jest", "vitest", "pytest", "playwright"] as const;
 export const IMPORT_BACKED: Readonly<Record<string, readonly string[]>> = {
   tests: TEST_FORMATS, unit_tests: TEST_FORMATS, integration_tests: TEST_FORMATS, contract_tests: TEST_FORMATS, e2e_tests: ["playwright", "junit"],
-  property_tests: TEST_FORMATS, mutation_tests: ["junit"], fuzz: ["junit"], concurrency_tests: TEST_FORMATS, failure_injection: TEST_FORMATS,
+  property_tests: ["fastcheck", "hypothesis"], mutation_tests: ["stryker"], fuzz: ["race_log"], concurrency_tests: ["race_log"], failure_injection: ["race_log"],
+  formal_verification: ["tla", "z3"], auth_boundary_tests: ["sarif", "semgrep_json"],
   lint: ["sarif"], typecheck: ["sarif", "junit"]
 };
 const SELECTION_AWARE = new Set(["tests", "unit_tests", "integration_tests"]);
@@ -53,6 +56,9 @@ function statusOf(checks: CheckStanding[]): CampaignStatus {
   }
   if (checks.some((c) => c.outcome === "invalidated" || c.state === "stale" || c.state === "environment_changed")) {
     return "INVALIDATED";
+  }
+  if (checks.some((c) => c.payload?.["unsupported"] === true)) {
+    return "INCOMPLETE"; // a technique that could not run is a visible gap, never a pass
   }
   return checks.every((c) => c.state === "current" && c.outcome === "passed") ? "PASSED" : "INCOMPLETE";
 }
@@ -128,7 +134,9 @@ export function recordFromImport(db: Database.Database, storeDir: string, id: st
       throw new EngbrainError("POLICY_REFUSED", `this import was already recorded for ${used[0]!.c}: one artifact backs one check`);
     }
     let verdict: ImportedOutcome;
-    if (detail.format === "sarif") {
+    if (ASSURANCE_FORMATS.includes(detail.format)) {
+      verdict = assuranceVerdict(db, id, importId, detail.format, detail.partial);
+    } else if (detail.format === "sarif") {
       const errors = (db.prepare("SELECT COUNT(*) AS n FROM evidence_findings WHERE import_id = ? AND level = 'error'").get(importId) as { n: number }).n;
       verdict = detail.partial ? { outcome: "incomplete", reasons: ["the SARIF report is incomplete"] } : errors > 0 ? { outcome: "failed", reasons: [`${errors} error-level findings`] } : { outcome: "passed", reasons: [] };
     } else {
@@ -258,7 +266,10 @@ export interface VerificationPlan {
   adapters: Record<string, string[]>; explanation: string[];
 }
 
-const ADAPTERS: Readonly<Record<string, string[]>> = { tests: ["vitest", "jest", "pytest", "playwright", "junit"], unit_tests: ["vitest", "jest", "pytest", "junit"], e2e_tests: ["playwright"], lint: ["sarif"], typecheck: ["sarif", "junit"] };
+const ADAPTERS: Readonly<Record<string, string[]>> = {
+  tests: ["vitest", "jest", "pytest", "playwright", "junit"], unit_tests: ["vitest", "jest", "pytest", "junit"], e2e_tests: ["playwright"], lint: ["sarif"], typecheck: ["sarif", "junit"],
+  mutation_tests: ["stryker"], property_tests: ["fastcheck", "hypothesis"], fuzz: ["race_log"], concurrency_tests: ["race_log"], failure_injection: ["race_log"], formal_verification: ["tla", "z3"], auth_boundary_tests: ["sarif", "semgrep_json"]
+};
 
 /** What a verification would do and why, without running anything: the passes, the tests selected (with proof, unknown areas and policy sampling), the enforcement a run needs, and what is missing. */
 export function planVerification(db: Database.Database, storeDir: string, id: string, currentFingerprint: string, sandbox: SelfTestResult, options: { now?: Date; environment?: Readonly<Record<string, string>> } = {}): VerificationPlan {
