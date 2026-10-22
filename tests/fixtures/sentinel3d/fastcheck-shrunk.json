@@ -1,0 +1,12 @@
+{
+  "tool": "fast-check",
+  "version": "3.22.0",
+  "property": "sortedInsert keeps the array sorted",
+  "seed": 1729314157,
+  "numRuns": 100,
+  "failed": true,
+  "counterexample": [[17, -4, 93, 0, -61, 8, 42, -1, 77, 5, -33, 12, 0, 64, -9, 21, 3, -88, 50, 6, -2, 39, 11, -70, 2, 95, -15, 28, 1, -47, 60, 7, -5, 84, 14, -26, 9, 31, -1, 4]],
+  "shrunk": [[0, -1]],
+  "shrinkPath": "41:2:3:1:0:0:5:1:0",
+  "shrinkSteps": 8
+}

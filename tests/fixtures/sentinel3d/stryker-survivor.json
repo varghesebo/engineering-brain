@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1",
+  "thresholds": { "high": 80, "low": 60 },
+  "framework": { "name": "StrykerJS", "version": "8.2.6" },
+  "files": {
+    "src/auth/guard.ts": {
+      "language": "typescript",
+      "source": "export function canAccess(user) {\n  return user.isAdmin && user.active;\n}\n",
+      "mutants": [
+        { "id": "1", "mutatorName": "LogicalOperator", "replacement": "user.isAdmin || user.active", "status": "Survived", "location": { "start": { "line": 2, "column": 10 }, "end": { "line": 2, "column": 37 } } },
+        { "id": "2", "mutatorName": "BooleanLiteral", "replacement": "true", "status": "Killed", "location": { "start": { "line": 2, "column": 10 }, "end": { "line": 2, "column": 37 } } },
+        { "id": "3", "mutatorName": "BlockStatement", "replacement": "{}", "status": "Killed", "location": { "start": { "line": 1, "column": 33 }, "end": { "line": 3, "column": 2 } } }
+      ]
+    },
+    "src/auth/session.ts": {
+      "language": "typescript",
+      "source": "export const isExpired = (s) => s.expiresAt < Date.now();\n",
+      "mutants": [
+        { "id": "4", "mutatorName": "EqualityOperator", "replacement": "s.expiresAt <= Date.now()", "status": "Killed", "location": { "start": { "line": 1, "column": 33 }, "end": { "line": 1, "column": 57 } } }
+      ]
+    }
+  }
+}

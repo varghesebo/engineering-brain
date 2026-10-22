@@ -1,0 +1,8 @@
+{
+  "tool": "z3",
+  "version": "4.13.0",
+  "specVersion": "rate-limit-invariant-v1",
+  "modelSha256": "a7e3c19d0b5f42e8916d3c7a0f2b8e4d5c6a7b8091e2f3a4b5c6d7e8f9012345",
+  "result": "unsat",
+  "note": "the negated invariant (requests_in_window > limit) is unsatisfiable within the encoded model and its bounds"
+}

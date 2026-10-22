@@ -1,0 +1,12 @@
+{
+  "tool": "sentinel-race-harness",
+  "version": "0.1.0",
+  "seed": 7,
+  "schedule": [
+    "t1: read counter (0)",
+    "t2: read counter (0)",
+    "t1: write counter (1)",
+    "t2: write counter (1)"
+  ],
+  "violation": "lost update: two increments produced counter=1, expected 2"
+}

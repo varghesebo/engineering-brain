@@ -1,0 +1,19 @@
+{
+  "version": "1.85.0",
+  "results": [
+    {
+      "check_id": "sentinel.auth.always-true-admin-check",
+      "path": "src/auth/guard.ts",
+      "start": { "line": 14, "col": 7, "offset": 312 },
+      "end": { "line": 14, "col": 33, "offset": 338 },
+      "extra": {
+        "message": "Authorization check is always true: `if (user.isAdmin || true)` lets every user through the admin guard.",
+        "severity": "ERROR",
+        "lines": "  if (user.isAdmin || true) {",
+        "metadata": { "cwe": ["CWE-285: Improper Authorization"], "category": "security" }
+      }
+    }
+  ],
+  "errors": [],
+  "paths": { "scanned": ["src/auth/guard.ts"] }
+}

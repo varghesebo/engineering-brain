@@ -1,0 +1,13 @@
+{
+  "tool": "TLC",
+  "version": "2.18",
+  "specVersion": "TokenBucket-v3",
+  "modelSha256": "3f1c2a9b7d4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708",
+  "result": "counterexample",
+  "trace": [
+    { "state": 1, "action": "Init", "vars": { "tokens": 1, "pending": [] } },
+    { "state": 2, "action": "Acquire(p1)", "vars": { "tokens": 0, "pending": ["p1"] } },
+    { "state": 3, "action": "Acquire(p2)", "vars": { "tokens": -1, "pending": ["p1", "p2"] } }
+  ],
+  "violatedInvariant": "TokensNonNegative"
+}
