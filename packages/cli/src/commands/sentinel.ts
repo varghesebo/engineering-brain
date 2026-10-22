@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import {
-  addTraceLink, approveTask, authenticate, authorizeExecution, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, traceabilityReport, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
+  addTraceLink, authorizeWorktree, checkWorktree, detectProviders, launchProvider, listFindings, resolveFinding, approveTask, authenticate, authorizeExecution, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, traceabilityReport, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
   Store, taskReport, type Profile, type Role
 } from "@engbrain/core";
 import type { CliContext } from "../context.js";
 import { EXIT, printable, printJsonOrText, type Io } from "../output.js";
 
-export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined; check: string | undefined; importId: string | undefined; requirement: number | undefined; behavior: string | undefined; test: string | undefined; testName: string | undefined; run: boolean; explain: boolean }
+export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined; path: string | undefined; resolve: string | undefined; disposition: string | undefined; check: string | undefined; importId: string | undefined; requirement: number | undefined; behavior: string | undefined; test: string | undefined; testName: string | undefined; run: boolean; explain: boolean }
 
 const usage = (io: Io, message: string): number => {
   io.stderr(`error: ${message}\n`);
@@ -21,8 +21,8 @@ const usage = (io: Io, message: string): number => {
 export async function sentinelCommand(io: Io, context: CliContext, json: boolean, o: SentinelOptions): Promise<number> {
   const sub = o.positionals[0];
   /** Acts that bind to the source tree need a HASH-VERIFIED index (every file re-read), not the cheap heuristic: the fingerprint must describe the files as they are. */
-  const bindsSource = (sub === "plan" && !o.dryRun) || ["approve", "authorize", "check-scope", "revalidate", "import"].includes(sub ?? "") || (sub === "verify" && o.run);
-  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "") || (sub === "trace" && o.positionals[1] === "add");
+  const bindsSource = (sub === "plan" && !o.dryRun) || ["approve", "authorize", "check-scope", "revalidate", "import"].includes(sub ?? "") || (sub === "verify" && o.run) || (sub === "worktree" && o.positionals[1] === "authorize");
+  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "") || (sub === "review" && o.resolve !== undefined) || (sub === "trace" && o.positionals[1] === "add");
   const open = { root: context.root, git: context.git, hardenedGit: context.hardenedGit, installId: context.installId };
   const store = writes ? await Store.open(open) : await Store.openReadOnly(open);
   try {
@@ -33,13 +33,13 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         io.stderr(`error: the index is ${fresh.level}, not hash-verified: run \`engbrain refresh\` first (a task is bound to the source as it is on disk)\n`);
         return EXIT.refused;
       }
-    } else if (sub !== "cancel" && sub !== "capability") {
+    } else if (sub !== "cancel" && sub !== "capability" && sub !== "providers" && sub !== "run") {
       const fresh = await checkFreshness(store, context.git, context.hardenedGit, { verify: false });
       if (fresh.level === "stale" || fresh.level === "unknown") {
         io.stderr(`warning: the index is ${fresh.level}: reports describe the last published generation\n`);
       }
     }
-    const fingerprint = sub === "cancel" || sub === "capability" ? "" : repositoryFingerprint(db);
+    const fingerprint = ["cancel", "capability", "providers", "run"].includes(sub ?? "") ? "" : repositoryFingerprint(db);
     switch (sub) {
       case "plan": {
         const profile = (o.profile ?? "A1") as Profile;
@@ -152,6 +152,67 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         printJsonOrText(io, json, { report }, [...report.requirements.map((r) => `requirement ${r.index} [${r.status}] ${printable(r.text)}${r.links.map((l) => `\n    ${printable(l.behavior)} -> ${printable(l.testPath)}${l.testName === null ? "" : `#${printable(l.testName)}`} (${l.checkId}: ${l.result})`).join("")}`), `missing coverage: ${report.missingCoverage.length}`].join("\n"));
         return EXIT.ok;
       }
+      case "providers": {
+        const providers = detectProviders(io.env["PATH"]);
+        printJsonOrText(io, json, { providers }, providers.map((p) => `${p.id.padEnd(12)} ${p.installed ? "installed" : "not installed"}  ${p.hosted ? "HOSTED (content leaves this machine)" : "local"}  ${printable(p.note)}`).join("\n") + "\nthis build never launches an agent or calls a model");
+        return EXIT.ok;
+      }
+      case "run": {
+        const id = o.positionals[1];
+        if (id === undefined || o.scope.length === 0) {
+          return usage(io, "sentinel run <id> --scope <path> ... names the explicit scope; this build prepares and checks, it never launches an agent");
+        }
+        try {
+          launchProvider();
+        } catch (error) {
+          io.stderr(`error: ${error instanceof Error ? error.message : "refused"}\nnext steps: authorize a throwaway worktree (sentinel worktree authorize ${id} --path <dir>), run your own agent in it, then \`sentinel worktree check ${id}\` and import its test results\n`);
+        }
+        return EXIT.refused;
+      }
+      case "worktree": {
+        const action = o.positionals[1];
+        const id = o.positionals[2];
+        if ((action !== "authorize" && action !== "check") || id === undefined) {
+          return usage(io, "sentinel worktree authorize <id> --path <dir> | worktree check <id>");
+        }
+        if (action === "authorize") {
+          if (o.path === undefined) {
+            return usage(io, "worktree authorize needs --path <throwaway worktree directory>");
+          }
+          const r = authorizeWorktree(db, id, authenticate(store.dir, io.env), o.path, context.root);
+          printJsonOrText(io, json, { files: r.files }, `worktree authorized (${r.files} files recorded as the baseline); changes outside the task scope, to existing tests or policy, or not declared will be flagged`);
+          return EXIT.ok;
+        }
+        const report = checkWorktree(db, id);
+        printJsonOrText(io, json, { report }, [`added ${report.added.length}, modified ${report.modified.length}, deleted ${report.deleted.length}`, ...report.unauthorized.map((p) => `UNAUTHORIZED ${printable(p)}`), ...report.protectedChanges.map((p) => `PROTECTED (test/policy) ${printable(p)}`), report.ok ? "ok" : "NOT ok"].join("\n"));
+        return report.ok ? EXIT.ok : EXIT.error;
+      }
+      case "review": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel review <id> [--resolve <finding id> --disposition fixed|rejected|accepted_risk --reason <text>]");
+        }
+        if (o.resolve !== undefined) {
+          if (o.disposition === undefined || o.reason === undefined || !["fixed", "rejected", "accepted_risk"].includes(o.disposition)) {
+            return usage(io, "--resolve needs --disposition fixed|rejected|accepted_risk and --reason");
+          }
+          resolveFinding(db, id, o.resolve, o.disposition as "fixed" | "rejected" | "accepted_risk", authenticate(store.dir, io.env), o.reason);
+          io.stdout("finding dispositioned\n");
+          return EXIT.ok;
+        }
+        const findings = listFindings(db, id);
+        printJsonOrText(io, json, { findings }, findings.map((f) => `${f.finding_id}  ${f.severity.padEnd(8)} ${f.disposition.padEnd(13)} ${printable(f.source_role)}/${printable(f.source_principal)}  ${printable(f.title)}`).join("\n") || "no findings");
+        return EXIT.ok;
+      }
+      case "evidence": {
+        const id = o.positionals[1];
+        if (id === undefined) {
+          return usage(io, "sentinel evidence <id>");
+        }
+        const report = taskReport(db, store.dir, id, fingerprint);
+        printJsonOrText(io, json, { evidence: report.evidence }, report.evidence.map((e) => `#${e.seq} ${e.at} ${e.origin} ${printable(e.kind)} ${e.checkId ?? "-"} ${e.outcome} by ${printable(e.verifier)}`).join("\n") || "no evidence");
+        return EXIT.ok;
+      }
       case "capability": {
         const [, action, id] = o.positionals;
         if (action !== "issue" || id === undefined || o.role === undefined || o.principal === undefined || !(ROLES as readonly string[]).includes(o.role)) {
@@ -194,7 +255,7 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         return EXIT.ok;
       }
       default:
-        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain|--run | import <id> | trace <id> | capability issue <id> | cancel <id>");
+        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain|--run | import <id> | trace <id> | providers | run <id> | worktree authorize|check <id> | review <id> | evidence <id> | capability issue <id> | cancel <id>");
     }
   } finally {
     store.close();

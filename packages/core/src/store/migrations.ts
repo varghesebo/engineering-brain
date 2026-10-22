@@ -947,6 +947,52 @@ CREATE TRIGGER sentinel_trace_append_only_u BEFORE UPDATE ON sentinel_trace BEGI
 CREATE TRIGGER sentinel_trace_append_only_d BEFORE DELETE ON sentinel_trace BEGIN SELECT RAISE(ABORT, 'trace links are append-only'); END;
 `;
 
+const SCHEMA_V10 = `
+-- Sentinel 3C: authorized worktrees (with a baseline of every file), review findings with evidence references, and bounded repair budgets.
+CREATE TABLE sentinel_worktrees (
+  task_id TEXT PRIMARY KEY REFERENCES sentinel_tasks(task_id),
+  path TEXT NOT NULL,
+  baseline_json TEXT NOT NULL,
+  authorized_by TEXT NOT NULL,
+  at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('active', 'revoked'))
+);
+CREATE TABLE sentinel_findings (
+  finding_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  at TEXT NOT NULL,
+  source_role TEXT NOT NULL,
+  source_principal TEXT NOT NULL,
+  provider TEXT,
+  severity TEXT NOT NULL CHECK (severity IN ('blocking', 'advisory')),
+  title TEXT NOT NULL,
+  evidence_json TEXT NOT NULL,
+  reproduction TEXT NOT NULL,
+  check_id TEXT,
+  disposition TEXT NOT NULL CHECK (disposition IN ('open', 'fixed', 'rejected', 'accepted_risk')),
+  disposition_by TEXT,
+  disposition_reason TEXT,
+  disposition_at TEXT
+);
+CREATE INDEX idx_sentinel_findings_task ON sentinel_findings(task_id, disposition);
+CREATE TRIGGER sentinel_findings_identity BEFORE UPDATE ON sentinel_findings
+WHEN NEW.finding_id IS NOT OLD.finding_id OR NEW.task_id IS NOT OLD.task_id OR NEW.at IS NOT OLD.at OR NEW.source_role IS NOT OLD.source_role OR NEW.source_principal IS NOT OLD.source_principal
+  OR NEW.severity IS NOT OLD.severity OR NEW.title IS NOT OLD.title OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.reproduction IS NOT OLD.reproduction OR NEW.check_id IS NOT OLD.check_id
+  OR (OLD.disposition != 'open' AND NEW.disposition IS NOT OLD.disposition)
+BEGIN SELECT RAISE(ABORT, 'a finding is immutable; only its disposition can be decided, once'); END;
+CREATE TRIGGER sentinel_findings_no_delete BEFORE DELETE ON sentinel_findings BEGIN SELECT RAISE(ABORT, 'findings are never deleted'); END;
+CREATE TABLE sentinel_repair (
+  task_id TEXT PRIMARY KEY REFERENCES sentinel_tasks(task_id),
+  budget_json TEXT NOT NULL,
+  iterations INTEGER NOT NULL DEFAULT 0,
+  tokens INTEGER NOT NULL DEFAULT 0,
+  cost_micro INTEGER NOT NULL DEFAULT 0,
+  elapsed_ms INTEGER NOT NULL DEFAULT 0,
+  signatures_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE TABLE sentinel_repair_keys (task_id TEXT NOT NULL, iteration_key TEXT NOT NULL, PRIMARY KEY (task_id, iteration_key)) WITHOUT ROWID;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: "foundation schema", up: (db) => db.exec(SCHEMA_V1) },
   { version: 2, name: "content-derived code facts", up: (db) => db.exec(SCHEMA_V2) },
@@ -965,7 +1011,8 @@ export const MIGRATIONS: readonly Migration[] = [
       }
       db.exec(SCHEMA_V9);
     }
-  }
+  },
+  { version: 10, name: "sentinel worktrees, findings and repair budgets", up: (db) => db.exec(SCHEMA_V10) }
 ];
 
 export interface MigrationResult {

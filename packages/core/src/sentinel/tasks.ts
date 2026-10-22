@@ -294,6 +294,23 @@ export function transitionTask(db: Database.Database, storeDir: string, id: stri
   }).immediate();
 }
 
+/** The controller itself stops a task (budget exhausted, concurrent change, recurrent failure): BLOCKED with a reason, every approval and execution authorization revoked. */
+export function systemBlock(db: Database.Database, storeDir: string, id: string, reason: string, now?: Date): TaskRow {
+  return db.transaction((): TaskRow => {
+    const task = getTask(db, id);
+    if (TERMINAL.includes(task.state) || task.state === "BLOCKED") {
+      return task;
+    }
+    const at = clock(now).toISOString();
+    const revision = task.revision + 1;
+    db.prepare("UPDATE sentinel_tasks SET state = 'BLOCKED', revision = ?, blocked_reason = ?, updated_at = ? WHERE task_id = ?").run(revision, reason.slice(0, SENTINEL_LIMITS.reason), at, id);
+    revokeAuthority(db, storeDir, id, false);
+    appendEvent(db, storeDir, id, at, "system_block", task.state, "BLOCKED", { principal: "controller", role: null, operator: null }, revision, { reason: reason.slice(0, SENTINEL_LIMITS.reason) });
+    reseal(db, storeDir, id);
+    return getTask(db, id);
+  }).immediate();
+}
+
 /** Admin only: every capability issued for the task before now stops working (a compromised or finished agent role is cut off). */
 export function revokeCapabilities(db: Database.Database, storeDir: string, id: string, actor: Actor, now?: Date): number {
   requireRole(actor, "admin");
@@ -520,6 +537,10 @@ export function evaluateEligibility(db: Database.Database, storeDir: string, id:
     if (st.blocker !== null) {
       blockers.push(st.blocker);
     }
+  }
+  const openBlocking = (db.prepare("SELECT COUNT(*) AS n FROM sentinel_findings WHERE task_id = ? AND disposition = 'open' AND severity = 'blocking'").get(id) as { n: number }).n;
+  if (openBlocking > 0) {
+    blockers.push(`${openBlocking} open blocking review finding(s)`);
   }
   const valid = validApprovals(db, storeDir, task, currentFingerprint, policyNow);
   return { checksPassing: blockers.length === 0 && stale.length === 0, blockers, stale, approvalsValid: valid.length, approvalsNeeded: profile.minApprovals, requiredChecks: checks };

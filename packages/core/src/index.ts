@@ -66,3 +66,8 @@ export * from "./sentinel/tasks.js";
 export * from "./sentinel/execution.js";
 export * from "./sentinel/fingerprint.js";
 export * from "./sentinel/campaigns.js";
+export * from "./sentinel/providers.js";
+export * from "./sentinel/worktree.js";
+export * from "./sentinel/findings.js";
+export * from "./sentinel/repair.js";
+export * from "./sentinel/taskHandoff.js";
