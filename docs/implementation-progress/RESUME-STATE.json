@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "repository_fingerprint": "base 2c9c842 + uncommitted working tree (H4 complete)",
-  "last_complete_phase": "3A (implemented, review-limited: Codex unavailable)",
-  "next_phase": "3B",
-  "phase_state": "not_started",
-  "last_report_path": "docs/implementation-progress/3A-report.md",
+  "last_complete_phase": "3B (non-executing portion implemented, review pending; execution disabled)",
+  "next_phase": "3C",
+  "phase_state": "blocked_on_user",
+  "last_report_path": "docs/implementation-progress/3B-report.md",
   "completed_gates": [
     "gate-0",
     "2A",
@@ -15,7 +15,8 @@
     "H3",
     "H4",
     "H5-partial",
-    "3A-review-limited"
+    "3A-review-limited",
+    "3B-partial"
   ],
   "pending_approvals": [
     "commit/push of any work (none authorized; all work is uncommitted on local branch phase-2a)",

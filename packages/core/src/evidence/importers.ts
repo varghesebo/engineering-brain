@@ -2,8 +2,9 @@ import { EngbrainError } from "../errors.js";
 import { scanForSecrets } from "../secretScan.js";
 import { parseXml, walk, type XmlNode } from "./xml.js";
 
-export type EvidenceFormat = "junit" | "lcov" | "cobertura" | "sarif" | "jest";
-export const EVIDENCE_FORMATS: readonly EvidenceFormat[] = ["junit", "lcov", "cobertura", "sarif", "jest"];
+/** `vitest` reads the jest-compatible JSON reporter, `pytest` reads `--junitxml` output, `playwright` reads the JSON reporter. */
+export type EvidenceFormat = "junit" | "lcov" | "cobertura" | "sarif" | "jest" | "vitest" | "playwright" | "pytest";
+export const EVIDENCE_FORMATS: readonly EvidenceFormat[] = ["junit", "lcov", "cobertura", "sarif", "jest", "vitest", "playwright", "pytest"];
 export type Outcome = "passed" | "failed" | "skipped" | "timed_out" | "error";
 
 export interface NormalizedResult { suite: string | null; name: string; file: string | null; outcome: Outcome; durationMs: number | null; message: string | null }
@@ -75,7 +76,7 @@ export function parseJUnit(text: string): NormalizedEvidence {
       const skipped = tc.children.find((c) => c.name === "skipped");
       const problem = failure ?? error;
       const timeout = problem !== undefined && /time(?:d)?[ -]?out/i.test(`${problem.attrs["type"] ?? ""} ${problem.attrs["message"] ?? ""}`);
-      const outcome: Outcome = skipped !== undefined ? "skipped" : timeout ? "timed_out" : failure !== undefined ? "failed" : error !== undefined ? "error" : "passed";
+      const outcome: Outcome = timeout ? "timed_out" : failure !== undefined ? "failed" : error !== undefined ? "error" : skipped !== undefined ? "skipped" : "passed"; // a failure is never hidden behind a skip
       void kinds;
       out.results.push({
         suite: clip(suite.attrs["name"], IMPORT_LIMITS.name), name: clip(tc.attrs["name"], IMPORT_LIMITS.name) ?? "(unnamed)", file: safeFile(tc.attrs["file"]),
@@ -258,6 +259,11 @@ export function parseJest(text: string): NormalizedEvidence {
       });
     }
   }
+  const failedRows = out.results.filter((r) => r.outcome === "failed" || r.outcome === "timed_out" || r.outcome === "error").length;
+  if ((Number(doc["numFailedTests"] ?? 0) > failedRows || (doc["numTotalTests"] !== undefined && Number(doc["numTotalTests"]) !== out.results.length)) && !out.partial) {
+    out.partial = true;
+    out.warnings.push("the report's totals disagree with the results it lists: the artifact is incomplete or altered");
+  }
   if (Number(doc["numFailedTestSuites"] ?? 0) > 0 && !out.partial) {
     out.partial = true;
     out.warnings.push(`${Number(doc["numFailedTestSuites"])} test suites failed to run`);
@@ -285,7 +291,77 @@ function parseByFormat(format: EvidenceFormat, text: string): NormalizedEvidence
     case "cobertura": return parseCobertura(text);
     case "sarif": return parseSarif(text);
     case "jest": return parseJest(text);
+    case "vitest": return { ...parseJest(text), format: "vitest" };
+    case "pytest": return { ...parseJUnit(text), format: "pytest" };
+    case "playwright": return parsePlaywright(text);
   }
+}
+
+/**
+ * Playwright's JSON reporter. The outcome is the LAST attempt's result, except that a test that only passed after retrying (`flaky`) is recorded as failed: a flaky pass must never read as green.
+ * `interrupted` and a missing result are recorded as errors, and an interrupted run marks the whole artifact partial.
+ */
+export function parsePlaywright(text: string): NormalizedEvidence {
+  let doc: Record<string, any>;
+  try {
+    doc = JSON.parse(text) as Record<string, any>;
+  } catch {
+    throw new EngbrainError("POLICY_REFUSED", "not valid JSON");
+  }
+  if (!Array.isArray(doc?.["suites"])) {
+    throw new EngbrainError("POLICY_REFUSED", "not a Playwright JSON report (no suites array)");
+  }
+  const out: NormalizedEvidence = { format: "playwright", results: [], coverage: [], findings: [], partial: false, warnings: [] };
+  const visit = (suite: Record<string, any>, ancestors: string[], depth: number): void => {
+    if (depth > 32) {
+      out.partial = true;
+      out.warnings.push("suite nesting too deep: the rest was not read");
+      return;
+    }
+    const titles = [...ancestors, ...(typeof suite?.["title"] === "string" && suite["title"] !== "" ? [String(suite["title"])] : [])];
+    for (const spec of Array.isArray(suite?.["specs"]) ? (suite["specs"] as Array<Record<string, any>>) : []) {
+      for (const test of Array.isArray(spec?.["tests"]) ? (spec["tests"] as Array<Record<string, any>>) : []) {
+        if (out.results.length >= IMPORT_LIMITS.results) {
+          out.partial = true;
+          out.warnings.push("result limit reached");
+          return;
+        }
+        const results = Array.isArray(test?.["results"]) ? (test["results"] as Array<Record<string, any>>) : [];
+        const last = results[results.length - 1];
+        const status = String(last?.["status"] ?? "");
+        const flaky = test?.["status"] === "flaky";
+        const outcome: Outcome = flaky ? "failed" : status === "passed" ? "passed" : status === "failed" ? "failed" : status === "timedOut" ? "timed_out" : status === "skipped" ? "skipped" : "error";
+        if (status === "interrupted" || last === undefined) {
+          out.partial = true;
+        }
+        out.results.push({
+          suite: clip(titles.join(" > "), IMPORT_LIMITS.name), name: clip(String(spec?.["title"] ?? ""), IMPORT_LIMITS.name) ?? "(unnamed)", file: safeFile(typeof spec?.["file"] === "string" ? spec["file"] : typeof suite?.["file"] === "string" ? suite["file"] : null),
+          outcome, durationMs: last !== undefined && Number.isFinite(last["duration"]) ? Math.round(Number(last["duration"])) : null, message: cleanMessage(flaky ? "flaky: passed only after retrying" : String(last?.["error"]?.["message"] ?? ""))
+        });
+      }
+    }
+    for (const child of Array.isArray(suite?.["suites"]) ? (suite["suites"] as Array<Record<string, any>>) : []) {
+      visit(child, titles, depth + 1);
+    }
+  };
+  for (const suite of doc["suites"] as Array<Record<string, any>>) {
+    visit(suite, [], 0);
+  }
+  const reportedErrors = Array.isArray(doc["errors"]) ? (doc["errors"] as unknown[]).length : 0;
+  if (reportedErrors > 0) {
+    out.partial = true;
+    out.warnings.push(`the report lists ${reportedErrors} global errors: the run is incomplete`);
+  }
+  const stats = doc["stats"] as Record<string, unknown> | undefined;
+  if (stats !== undefined && Number(stats["unexpected"] ?? 0) > out.results.filter((r) => r.outcome === "failed" || r.outcome === "timed_out" || r.outcome === "error").length) {
+    out.partial = true;
+    out.warnings.push("the report's failure count is higher than the failures it lists");
+  }
+  if (out.results.length === 0) {
+    out.partial = true;
+    out.warnings.push("no test results were found");
+  }
+  return out;
 }
 
 export type { XmlNode };

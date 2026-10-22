@@ -65,3 +65,4 @@ export * from "./sentinel/capabilities.js";
 export * from "./sentinel/tasks.js";
 export * from "./sentinel/execution.js";
 export * from "./sentinel/fingerprint.js";
+export * from "./sentinel/campaigns.js";

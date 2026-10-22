@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import {
-  approveTask, authenticate, authorizeExecution, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
+  addTraceLink, approveTask, authenticate, authorizeExecution, planVerification, probeCapabilities, recordFromImport, refuseRunIfUnenforceable, traceabilityReport, cancelTask, changedPathsSince, checkFreshness, createTask, getTask, issueCapability, listTasks, PROFILES, recordScopeCheck, repositoryFingerprint, requiredChecks, revalidateTask, ROLES,
   Store, taskReport, type Profile, type Role
 } from "@engbrain/core";
 import type { CliContext } from "../context.js";
 import { EXIT, printable, printJsonOrText, type Io } from "../output.js";
 
-export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined }
+export interface SentinelOptions { positionals: string[]; title: string | undefined; scope: string[]; profile: string | undefined; dryRun: boolean; reason: string | undefined; failOnStale: boolean; role: string | undefined; principal: string | undefined; minutes: number | undefined; runs: number | undefined; check: string | undefined; importId: string | undefined; requirement: number | undefined; behavior: string | undefined; test: string | undefined; testName: string | undefined; run: boolean; explain: boolean }
 
 const usage = (io: Io, message: string): number => {
   io.stderr(`error: ${message}\n`);
@@ -21,8 +21,8 @@ const usage = (io: Io, message: string): number => {
 export async function sentinelCommand(io: Io, context: CliContext, json: boolean, o: SentinelOptions): Promise<number> {
   const sub = o.positionals[0];
   /** Acts that bind to the source tree need a HASH-VERIFIED index (every file re-read), not the cheap heuristic: the fingerprint must describe the files as they are. */
-  const bindsSource = (sub === "plan" && !o.dryRun) || ["approve", "authorize", "check-scope", "revalidate"].includes(sub ?? "");
-  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "");
+  const bindsSource = (sub === "plan" && !o.dryRun) || ["approve", "authorize", "check-scope", "revalidate", "import"].includes(sub ?? "") || (sub === "verify" && o.run);
+  const writes = bindsSource || ["cancel", "capability"].includes(sub ?? "") || (sub === "trace" && o.positionals[1] === "add");
   const open = { root: context.root, git: context.git, hardenedGit: context.hardenedGit, installId: context.installId };
   const store = writes ? await Store.open(open) : await Store.openReadOnly(open);
   try {
@@ -105,6 +105,53 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         printJsonOrText(io, json, { result: r, changedFiles: changed.paths.length, note: "committed changes only: uncommitted edits are not covered" }, `scope check ${r.outcome}${r.violations.length > 0 ? `; outside scope: ${r.violations.slice(0, 10).map(printable).join(", ")}` : ""} (committed changes since the base only)`);
         return r.outcome === "passed" ? EXIT.ok : EXIT.error;
       }
+      case "verify": {
+        const id = o.positionals[1];
+        if (id === undefined || (!o.dryRun && !o.run && !o.explain)) {
+          return usage(io, "sentinel verify <id> needs --dry-run, --explain or --run");
+        }
+        const sandbox = (await probeCapabilities()).result;
+        if (o.run) {
+          authenticate(store.dir, io.env);
+          refuseRunIfUnenforceable(sandbox);
+        }
+        const plan = planVerification(db, store.dir, id, fingerprint, sandbox);
+        const lines = [
+          `${plan.taskId}  ${plan.state}`, ...plan.campaigns.map((c) => `${c.passClass.padEnd(17)} ${c.status}${c.checks.length === 0 ? "" : `  (${c.checks.map((k) => `${k.checkId}=${k.state === "current" ? k.outcome : k.state}`).join(", ")})`}`),
+          ...(plan.selection === null ? [] : [`tests selected: ${plan.selection.selected.length}; unmapped files: ${plan.selection.unmapped.length}; policy sample: ${plan.selection.sample.length}`]),
+          ...(o.explain ? plan.explanation.map((e) => `- ${printable(e)}`) : []), "no repository code was run (only the sandbox self-test, a fixed probe, executed)"
+        ];
+        printJsonOrText(io, json, { plan }, lines.join("\n"));
+        return EXIT.ok;
+      }
+      case "import": {
+        const id = o.positionals[1];
+        const token = io.env["ENGBRAIN_SENTINEL_CAPABILITY"];
+        if (id === undefined || o.check === undefined || o.importId === undefined || token === undefined) {
+          return usage(io, "sentinel import <task id> --check-id <check id> --import <evidence import id> needs a verification capability in ENGBRAIN_SENTINEL_CAPABILITY");
+        }
+        const verdict = recordFromImport(db, store.dir, id, o.check, o.importId, { capability: token }, fingerprint);
+        printJsonOrText(io, json, { verdict }, `recorded ${o.check} as ${verdict.outcome}${verdict.reasons.length > 0 ? ` (${verdict.reasons.map(printable).join("; ")})` : ""}`);
+        return verdict.outcome === "passed" ? EXIT.ok : EXIT.error;
+      }
+      case "trace": {
+        const id = o.positionals[o.positionals[1] === "add" ? 2 : 1];
+        if (id === undefined) {
+          return usage(io, "sentinel trace <id> | trace add <id> --requirement <n> --behavior <text> --test <path> [--test-name <t>] --check-id <check id>");
+        }
+        if (o.positionals[1] === "add") {
+          if (o.requirement === undefined || o.behavior === undefined || o.test === undefined || o.check === undefined) {
+            return usage(io, "trace add needs --requirement, --behavior, --test and --check-id");
+          }
+          const actor = authenticate(store.dir, io.env);
+          addTraceLink(db, id, { requirementIx: o.requirement, behavior: o.behavior, testPath: o.test, checkId: o.check, ...(o.testName === undefined ? {} : { testName: o.testName }) }, actor.id);
+          io.stdout("trace link recorded\n");
+          return EXIT.ok;
+        }
+        const report = traceabilityReport(db, store.dir, id, fingerprint);
+        printJsonOrText(io, json, { report }, [...report.requirements.map((r) => `requirement ${r.index} [${r.status}] ${printable(r.text)}${r.links.map((l) => `\n    ${printable(l.behavior)} -> ${printable(l.testPath)}${l.testName === null ? "" : `#${printable(l.testName)}`} (${l.checkId}: ${l.result})`).join("")}`), `missing coverage: ${report.missingCoverage.length}`].join("\n"));
+        return EXIT.ok;
+      }
       case "capability": {
         const [, action, id] = o.positionals;
         if (action !== "issue" || id === undefined || o.role === undefined || o.principal === undefined || !(ROLES as readonly string[]).includes(o.role)) {
@@ -147,7 +194,7 @@ export async function sentinelCommand(io: Io, context: CliContext, json: boolean
         return EXIT.ok;
       }
       default:
-        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | capability issue <id> | cancel <id>");
+        return usage(io, "sentinel needs: plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain|--run | import <id> | trace <id> | capability issue <id> | cancel <id>");
     }
   } finally {
     store.close();

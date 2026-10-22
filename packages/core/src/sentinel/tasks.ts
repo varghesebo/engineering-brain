@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import { EngbrainError } from "../errors.js";
 import { requireRole, type Actor } from "../memory/operators.js";
 import { findSecretIn } from "../memory/records.js";
+import { showEvidence } from "../evidence/store.js";
 import { controllerKey, hmacHex, ROLE_TARGETS, verifyCapability, type Role } from "./capabilities.js";
 import { effectiveProfile, policyHash, PROFILES, requiredChecks, type Profile } from "./policy.js";
 
@@ -307,7 +308,7 @@ export function revokeCapabilities(db: Database.Database, storeDir: string, id: 
 
 // ---------- evidence ----------
 
-export type EvidenceOutcome = "passed" | "failed" | "skipped" | "timed_out" | "incomplete";
+export type EvidenceOutcome = "passed" | "failed" | "skipped" | "timed_out" | "incomplete" | "not_run" | "invalidated";
 export interface EvidenceInput {
   origin: "machine" | "agent_note"; kind: string; checkId?: string; outcome: EvidenceOutcome; environment?: Record<string, string>; payload?: Record<string, unknown>;
   /** A claimed fingerprint is checked against the repository's real one; it is never trusted. */
@@ -450,10 +451,54 @@ export function verifyTaskChain(db: Database.Database, storeDir: string, id: str
 
 // ---------- eligibility, assurance, approval ----------
 
+
+export interface CheckStanding { checkId: string; outcome: EvidenceOutcome | "not_run"; state: "none" | "current" | "stale" | "expired" | "environment_changed"; recordedAt: string | null; blocker: string | null; payload: Record<string, unknown> | null }
+
+/** The latest TRUSTED result of one check and whether it still stands: bound to the current source, policy and (when given) environment, inside its lifetime, and passing. */
+export function checkStanding(db: Database.Database, storeDir: string, id: string, check: string, currentFingerprint: string, now?: Date, environment?: Readonly<Record<string, string>>): CheckStanding {
+  const task = getTask(db, id);
+  const profile = effectiveProfile(storeDir, task.profile);
+  const latest = db.prepare("SELECT outcome, at, source_fingerprint AS fp, policy_hash AS policy, environment_json AS env, payload_json AS payload FROM sentinel_evidence WHERE task_id = ? AND origin = 'machine' AND check_id = ? ORDER BY seq DESC LIMIT 1").get(id, check) as { outcome: EvidenceOutcome; at: string; fp: string; policy: string; env: string; payload: string } | undefined;
+  if (latest === undefined) {
+    return { checkId: check, outcome: "not_run", state: "none", recordedAt: null, blocker: `${check}: pending (no trusted evidence)`, payload: null };
+  }
+  const recordedEnv = JSON.parse(latest.env) as Record<string, string>;
+  const payload = JSON.parse(latest.payload) as Record<string, unknown>;
+  const base = { checkId: check, outcome: latest.outcome, recordedAt: latest.at, payload };
+  // the environment the run declared must still be the recorded one: an explicit expectation, or the store's current environment assumptions for the keys the run declared
+  const current: Record<string, string> = { ...(environment ?? {}) };
+  for (const key of Object.keys(recordedEnv)) {
+    if (!(key in current)) {
+      const row = db.prepare("SELECT value FROM memory_environment WHERE key = ? ORDER BY id DESC LIMIT 1").get(key) as { value: string } | undefined;
+      if (row !== undefined) {
+        current[key] = row.value;
+      }
+    }
+  }
+  if (Object.entries(current).some(([k, v]) => recordedEnv[k] !== v)) {
+    return { ...base, state: "environment_changed", blocker: `${check}: evidence is stale (the environment it ran in changed)` };
+  }
+  // evidence bridged from an import only stands while that import still applies (not rejected, not stale, not on another line of history)
+  const importId = typeof payload["importId"] === "string" ? payload["importId"] : null;
+  if (importId !== null && latest.outcome === "passed") {
+    const source = showEvidence(db, importId, now === undefined ? {} : { now: () => now });
+    if (source === null || (source.trust !== "signed" && source.trust !== "accepted") || source.standing !== "applies") {
+      return { ...base, state: "stale", blocker: `${check}: the import behind this evidence no longer applies (${source === null ? "missing" : `${source.trust}, ${source.standing}`})` };
+    }
+  }
+  if (latest.fp !== currentFingerprint || latest.policy !== policyHash(storeDir)) {
+    return { ...base, state: "stale", blocker: `${check}: evidence is stale (recorded for different source or policy)` };
+  }
+  if (clock(now).getTime() - new Date(latest.at).getTime() > profile.evidenceMaxAgeHours * 3_600_000) {
+    return { ...base, state: "expired", blocker: `${check}: evidence expired (older than ${profile.evidenceMaxAgeHours} h)` };
+  }
+  return { ...base, state: "current", blocker: latest.outcome === "passed" ? null : `${check}: ${latest.outcome}` };
+}
+
 export interface Eligibility { checksPassing: boolean; blockers: string[]; stale: string[]; approvalsValid: number; approvalsNeeded: number; requiredChecks: string[] }
 
 /** Whether the mandatory checks currently hold. Only trusted (machine) evidence bound to the CURRENT fingerprint and policy, within its lifetime, and passing, counts; anything else is a blocker. */
-export function evaluateEligibility(db: Database.Database, storeDir: string, id: string, currentFingerprint: string, now?: Date): Eligibility {
+export function evaluateEligibility(db: Database.Database, storeDir: string, id: string, currentFingerprint: string, now?: Date, environment?: Readonly<Record<string, string>>): Eligibility {
   const task = getTask(db, id);
   const profile = effectiveProfile(storeDir, task.profile);
   const checks = requiredChecks(storeDir, task.profile, JSON.parse(task.scope_json) as string[]);
@@ -470,17 +515,10 @@ export function evaluateEligibility(db: Database.Database, storeDir: string, id:
   if (!chain.ok) {
     blockers.push(`the event or evidence log failed verification: ${chain.problems[0]}`);
   }
-  const maxAgeMs = profile.evidenceMaxAgeHours * 3_600_000;
   for (const check of checks) {
-    const latest = db.prepare("SELECT outcome, at, source_fingerprint AS fp, policy_hash AS policy FROM sentinel_evidence WHERE task_id = ? AND origin = 'machine' AND check_id = ? ORDER BY seq DESC LIMIT 1").get(id, check) as { outcome: string; at: string; fp: string; policy: string } | undefined;
-    if (latest === undefined) {
-      blockers.push(`${check}: pending (no trusted evidence)`);
-    } else if (latest.fp !== currentFingerprint || latest.policy !== policyNow) {
-      blockers.push(`${check}: evidence is stale (recorded for different source or policy)`);
-    } else if (clock(now).getTime() - new Date(latest.at).getTime() > maxAgeMs) {
-      blockers.push(`${check}: evidence expired (older than ${profile.evidenceMaxAgeHours} h)`);
-    } else if (latest.outcome !== "passed") {
-      blockers.push(`${check}: ${latest.outcome}`);
+    const st = checkStanding(db, storeDir, id, check, currentFingerprint, now, environment);
+    if (st.blocker !== null) {
+      blockers.push(st.blocker);
     }
   }
   const valid = validApprovals(db, storeDir, task, currentFingerprint, policyNow);

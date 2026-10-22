@@ -690,7 +690,7 @@ CREATE TRIGGER memory_environment_immutable BEFORE UPDATE ON memory_environment 
 const SCHEMA_V7 = `
 CREATE TABLE evidence_imports (
   import_id TEXT PRIMARY KEY,
-  format TEXT NOT NULL CHECK (format IN ('junit', 'lcov', 'cobertura', 'sarif', 'jest')),
+  format TEXT NOT NULL CHECK (format IN ('junit', 'lcov', 'cobertura', 'sarif', 'jest', 'vitest', 'playwright', 'pytest')),
   artifact_name TEXT NOT NULL,
   artifact_sha256 TEXT NOT NULL,
   artifact_size INTEGER NOT NULL,
@@ -864,7 +864,7 @@ CREATE TABLE sentinel_evidence (
   origin TEXT NOT NULL CHECK (origin IN ('machine', 'agent_note')),
   kind TEXT NOT NULL,
   check_id TEXT,
-  outcome TEXT NOT NULL CHECK (outcome IN ('passed', 'failed', 'skipped', 'timed_out', 'incomplete')),
+  outcome TEXT NOT NULL CHECK (outcome IN ('passed', 'failed', 'skipped', 'timed_out', 'incomplete', 'not_run', 'invalidated')),
   verifier TEXT NOT NULL,
   source_fingerprint TEXT NOT NULL,
   policy_hash TEXT NOT NULL,
@@ -929,6 +929,24 @@ WHEN NEW.task_id IS NOT OLD.task_id OR NEW.created_at IS NOT OLD.created_at OR N
 BEGIN SELECT RAISE(ABORT, 'task identity, scope and profile are immutable; a terminal task cannot be reopened'); END;
 `;
 
+const SCHEMA_V9 = `
+-- Sentinel 3B: campaign plans (three structurally distinct passes) and requirement -> behavior -> test -> evidence links.
+CREATE TABLE sentinel_trace (
+  link_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL REFERENCES sentinel_tasks(task_id),
+  at TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  requirement_ix INTEGER NOT NULL,
+  behavior TEXT NOT NULL,
+  test_path TEXT NOT NULL,
+  test_name TEXT,
+  check_id TEXT NOT NULL
+);
+CREATE INDEX idx_sentinel_trace_task ON sentinel_trace(task_id, requirement_ix);
+CREATE TRIGGER sentinel_trace_append_only_u BEFORE UPDATE ON sentinel_trace BEGIN SELECT RAISE(ABORT, 'trace links are append-only'); END;
+CREATE TRIGGER sentinel_trace_append_only_d BEFORE DELETE ON sentinel_trace BEGIN SELECT RAISE(ABORT, 'trace links are append-only'); END;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: "foundation schema", up: (db) => db.exec(SCHEMA_V1) },
   { version: 2, name: "content-derived code facts", up: (db) => db.exec(SCHEMA_V2) },
@@ -937,7 +955,17 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 5, name: "feature graph", up: (db) => db.exec(SCHEMA_V5) },
   { version: 6, name: "temporal memory", up: (db) => db.exec(SCHEMA_V6) },
   { version: 7, name: "evidence import and handoffs", up: (db) => db.exec(SCHEMA_V7) },
-  { version: 8, name: "sentinel tasks, evidence and approvals", up: (db) => db.exec(SCHEMA_V8) }
+  { version: 8, name: "sentinel tasks, evidence and approvals", up: (db) => db.exec(SCHEMA_V8) },
+  {
+    version: 9, name: "sentinel campaigns and traceability", up: (db) => {
+      // v7/v8 were extended in place before any release: a store made by an EARLIER development build would lack the new CHECK values and crash later, so refuse it with a clear instruction
+      const ddl = (name: string): string => (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) as { sql: string } | undefined)?.sql ?? "";
+      if (!ddl("sentinel_evidence").includes("'invalidated'") || !ddl("evidence_imports").includes("'playwright'")) {
+        throw new EngbrainError("INVALID_CONFIG", "this store was created by an earlier development build of schema v7/v8 and cannot be upgraded in place: run `engbrain uninstall --purge --yes` and `engbrain init`");
+      }
+      db.exec(SCHEMA_V9);
+    }
+  }
 ];
 
 export interface MigrationResult {

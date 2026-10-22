@@ -42,7 +42,7 @@ Commands:
   impact      potential impact of changed files: impact <files...> | --since <commit>
   tests       advisory test selection: tests select <files...> [--since <commit>] [--sample <n>]
   handoff     session handoff packets: create | show <id> | list | close <id>
-  sentinel    task planning and reports (never writes source, never runs repository code): plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | capability issue <id> | cancel <id>
+  sentinel    task planning and reports (never writes source, never runs repository code): plan | list | status <id> | report <id> | approve <id> | authorize <id> | revalidate <id> | check-scope <id> | verify <id> --dry-run|--explain | import <id> | trace <id> | capability issue <id> | cancel <id>
   context     ranked, token-bounded code context for a task: context "<task>" [--max-tokens <n>]
   mcp         serve the read-only MCP interface on stdio for this repository (--fail-on-stale to refuse stale answers)
   agents      show (or with --apply claude|codex write) the MCP configuration for a coding agent
@@ -74,7 +74,7 @@ const OPTIONS = {
   history: { type: "string" }, since: { type: "string" }, commit: { type: "string" }, "max-commits": { type: "string" }, "time-budget-ms": { type: "string" }, status: { type: "boolean" },
   format: { type: "string" }, revision: { type: "string" }, tree: { type: "string" }, "run-command": { type: "string" }, env: { type: "string", multiple: true }, verifier: { type: "string" }, signature: { type: "string" },
   sample: { type: "string" }, task: { type: "string" }, scope: { type: "string", multiple: true }, ref: { type: "string", multiple: true }, hypothesis: { type: "string", multiple: true }, blocker: { type: "string", multiple: true },
-  pending: { type: "string", multiple: true }, "ttl-hours": { type: "string" }, title: { type: "string" }, profile: { type: "string" }, "dry-run": { type: "boolean" }, role: { type: "string" }, principal: { type: "string" }, minutes: { type: "string" }, runs: { type: "string" }
+  pending: { type: "string", multiple: true }, "ttl-hours": { type: "string" }, title: { type: "string" }, profile: { type: "string" }, "dry-run": { type: "boolean" }, role: { type: "string" }, principal: { type: "string" }, minutes: { type: "string" }, runs: { type: "string" }, "check-id": { type: "string" }, import: { type: "string" }, requirement: { type: "string" }, behavior: { type: "string" }, test: { type: "string" }, "test-name": { type: "string" }, run: { type: "boolean" }, explain: { type: "boolean" }
 } as const;
 
 const SYMBOL_KINDS = new Set(["module", "namespace", "function", "class", "constructor", "method", "interface", "type", "enum", "variable"]);
@@ -107,6 +107,10 @@ export async function main(argv: string[], io: Io): Promise<number> {
   if (values.help === true || command === undefined) {
     io.stdout(`${HELP}\n`);
     return command === undefined && values.help !== true ? EXIT.usage : EXIT.ok;
+  }
+  if (values.run === true && command !== "sentinel") {
+    io.stderr(`error: Unknown option '--run' for '${command}': only \`sentinel verify <id> --run\` accepts it (and it refuses unless the OS can enforce every limit)\n`);
+    return EXIT.usage;
   }
   const json = values.json === true;
   const keep = values.keep === undefined ? null : Number(values.keep);
@@ -240,7 +244,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
         case "decisions":
           return await memoryCommand(io, context, json, command as MemoryGroup, memoryOptions);
         case "sentinel":
-          return await sentinelCommand(io, context, json, { positionals: positionals.slice(1), title: values.title, scope: values.scope ?? [], profile: values.profile, dryRun: values["dry-run"] === true, reason: values.reason, failOnStale: values["fail-on-stale"] === true, role: values.role, principal: values.principal, minutes: values.minutes === undefined ? undefined : Number(values.minutes), runs: values.runs === undefined ? undefined : Number(values.runs) });
+          return await sentinelCommand(io, context, json, { positionals: positionals.slice(1), title: values.title, scope: values.scope ?? [], profile: values.profile, dryRun: values["dry-run"] === true, reason: values.reason, failOnStale: values["fail-on-stale"] === true, role: values.role, principal: values.principal, minutes: values.minutes === undefined ? undefined : Number(values.minutes), runs: values.runs === undefined ? undefined : Number(values.runs), check: values["check-id"], importId: values.import, requirement: values.requirement === undefined ? undefined : Number(values.requirement), behavior: values.behavior, test: values.test, testName: values["test-name"], run: values.run === true, explain: values.explain === true });
         case "refresh":
           await refreshCommand(io, context, json, { history: (values.history as "backfill" | "none" | undefined) ?? "none", maxCommits, timeBudgetMs: timeBudget, status: values.status === true });
           return EXIT.ok;
